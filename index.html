@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CHEFLINK – 店舗マップ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f1117; --panel: #1a1d27; --card: #22263a; --border: #2e3248;
+    --text: #e8eaf0; --muted: #7a7f9a;
+    --accent-red: #ff4d6d; --accent-teal: #00c9a7; --accent-gold: #f5a623;
+    --pill-bg: #1e2235;
+  }
+  body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--text); height:100vh; overflow:hidden; display:flex; flex-direction:column; }
+
+  /* Header */
+  header { display:flex; align-items:center; gap:12px; padding:10px 16px; background:var(--bg); border-bottom:1px solid var(--border); z-index:1000; flex-shrink:0; }
+  .logo { font-family:'Space Mono',monospace; font-size:15px; font-weight:700; letter-spacing:2px; color:var(--accent-gold); }
+  .logo span { color:var(--text); }
+  .header-right { margin-left:auto; display:flex; align-items:center; gap:10px; }
+  .refresh-btn { background:var(--card); border:1px solid var(--border); color:var(--muted); border-radius:8px; padding:5px 12px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:6px; transition:all 0.15s; font-family:'Noto Sans JP',sans-serif; }
+  .refresh-btn:hover { color:var(--text); border-color:var(--accent-teal); }
+  .refresh-btn.spinning .icon { display:inline-block; animation:spin 0.8s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .status-dot { width:7px; height:7px; border-radius:50%; background:#666; flex-shrink:0; }
+  .status-dot.ok { background:var(--accent-teal); box-shadow:0 0 6px var(--accent-teal); }
+  .status-dot.err { background:var(--accent-red); }
+
+  /* Filter */
+  .filter-bar { display:flex; gap:8px; padding:8px 16px; overflow-x:auto; background:var(--bg); border-bottom:1px solid var(--border); flex-shrink:0; scrollbar-width:none; z-index:999; }
+  .filter-bar::-webkit-scrollbar { display:none; }
+  .filter-pill { display:flex; align-items:center; gap:6px; padding:6px 14px; border-radius:999px; background:var(--pill-bg); border:1px solid var(--border); color:var(--muted); font-size:12px; font-weight:500; white-space:nowrap; cursor:pointer; transition:all 0.18s ease; user-select:none; font-family:'Noto Sans JP',sans-serif; }
+  .filter-pill:hover { border-color:var(--accent-teal); color:var(--text); }
+  .filter-pill.active { background:var(--accent-teal); border-color:var(--accent-teal); color:#0f1117; font-weight:700; }
+  .filter-pill .dot { width:8px; height:8px; border-radius:50%; background:currentColor; }
+
+  /* Layout */
+  .main { display:flex; flex:1; overflow:hidden; position:relative; }
+  #map { flex:1; z-index:1; }
+  .leaflet-tile { filter:brightness(0.85) saturate(0.7) hue-rotate(185deg); }
+
+  /* Side Panel */
+  .side-panel { width:300px; background:var(--panel); border-right:1px solid var(--border); overflow-y:auto; transform:translateX(-100%); transition:transform 0.28s cubic-bezier(0.4,0,0.2,1); position:absolute; top:0; left:0; bottom:0; z-index:100; scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
+  .side-panel.open { transform:translateX(0); }
+  .panel-header { display:flex; align-items:flex-start; gap:12px; padding:16px; border-bottom:1px solid var(--border); position:sticky; top:0; background:var(--panel); z-index:10; }
+  .store-icon { width:48px; height:48px; border-radius:12px; background:var(--card); display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; border:1px solid var(--border); }
+  .panel-title h2 { font-size:15px; font-weight:700; line-height:1.3; }
+  .category-badge { display:inline-flex; align-items:center; gap:4px; margin-top:5px; padding:3px 10px; border-radius:999px; font-size:11px; font-weight:600; background:var(--card); border:1px solid var(--border); }
+  .store-address { display:flex; align-items:center; gap:4px; margin-top:6px; font-size:11px; color:var(--muted); }
+  .close-btn { margin-left:auto; width:28px; height:28px; border-radius:50%; border:1px solid var(--border); background:var(--card); color:var(--muted); font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all 0.15s; }
+  .close-btn:hover { color:var(--text); border-color:var(--text); }
+
+  .panel-section { padding:14px 16px; border-bottom:1px solid var(--border); }
+  .panel-section h3 { font-size:11px; color:var(--muted); font-weight:500; margin-bottom:10px; letter-spacing:0.5px; }
+  .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .info-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:10px 12px; }
+  .info-card .label { font-size:10px; color:var(--muted); margin-bottom:4px; }
+  .info-card .value { font-size:13px; font-weight:600; line-height:1.3; }
+
+  /* Reactions */
+  .reaction-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:14px 16px; }
+  .reaction-btn { background:var(--card); border:1.5px solid var(--border); border-radius:12px; padding:14px 8px; display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer; transition:all 0.2s ease; user-select:none; font-family:'Noto Sans JP',sans-serif; }
+  .reaction-btn .emoji { font-size:22px; }
+  .reaction-btn .rlabel { font-size:12px; font-weight:600; }
+  .reaction-btn .rcount { font-size:11px; color:var(--muted); }
+  .reaction-btn.hoshii.active,.reaction-btn.hoshii:hover { border-color:var(--accent-red); background:rgba(255,77,109,0.12); color:var(--accent-red); }
+  .reaction-btn.kininaru.active,.reaction-btn.kininaru:hover { border-color:var(--accent-teal); background:rgba(0,201,167,0.1); color:var(--accent-teal); }
+  .reaction-btn.loading { opacity:0.5; pointer-events:none; }
+
+  /* Stats Badge */
+  .stats-badge { position:fixed; bottom:20px; right:20px; background:rgba(15,17,23,0.92); border:1px solid var(--border); border-radius:14px; padding:10px 14px; display:flex; gap:16px; align-items:center; z-index:500; backdrop-filter:blur(8px); box-shadow:0 4px 20px rgba(0,0,0,0.5); }
+  .stat-item { text-align:center; }
+  .stat-item .num { font-family:'Space Mono',monospace; font-size:16px; font-weight:700; color:var(--accent-gold); display:block; }
+  .stat-item .num.teal { color:var(--accent-teal); }
+  .stat-item .lbl { font-size:10px; color:var(--muted); display:block; margin-top:1px; }
+  .stat-divider { width:1px; height:30px; background:var(--border); }
+
+  /* Loading overlay */
+  .loading-overlay { position:fixed; inset:0; background:rgba(15,17,23,0.85); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:2000; gap:16px; }
+  .loading-overlay.hidden { display:none; }
+  .spinner { width:36px; height:36px; border:3px solid var(--border); border-top-color:var(--accent-teal); border-radius:50%; animation:spin 0.8s linear infinite; }
+  .loading-overlay p { color:var(--muted); font-size:13px; }
+
+  /* Error toast */
+  .toast { position:fixed; top:70px; left:50%; transform:translateX(-50%) translateY(-80px); background:var(--accent-red); color:#fff; padding:10px 20px; border-radius:10px; font-size:13px; font-weight:600; z-index:3000; transition:transform 0.3s ease; pointer-events:none; }
+  .toast.show { transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- ★ここにGASのデプロイURLを貼り付ける -->
+<script>
+  const GAS_URL = 'YOUR_GAS_DEPLOY_URL_HERE';
+</script>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <p>店舗データを読み込んでいます…</p>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<header>
+  <img src="data:image/png;base64,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" alt="CHEFLINK" style="height:28px;">
+  <div style="font-size:12px;color:var(--muted);margin-left:4px;">– 店舗マップ</div>
+  <div class="header-right">
+    <div class="status-dot" id="statusDot"></div>
+    <button class="refresh-btn" id="refreshBtn" onclick="loadStores()">
+      <span class="icon">↺</span> 更新
+    </button>
+  </div>
+</header>
+
+<div class="filter-bar" id="filterBar"></div>
+
+<div class="main">
+  <div class="side-panel" id="sidePanel">
+    <div class="panel-header">
+      <div class="store-icon" id="panelIcon">🍽️</div>
+      <div class="panel-title">
+        <h2 id="panelName">店舗名</h2>
+        <div class="category-badge" id="panelBadge"><span>●</span><span id="panelCat">カテゴリ</span></div>
+        <div class="store-address">📍 <span id="panelAddr">住所</span></div>
+      </div>
+      <button class="close-btn" onclick="closePanel()">✕</button>
+    </div>
+    <div class="panel-section">
+      <h3>店舗情報</h3>
+      <div class="info-grid">
+        <div class="info-card"><div class="label">最寄駅</div><div class="value" id="infoStation">—</div></div>
+        <div class="info-card"><div class="label">従業員数</div><div class="value" id="infoStaff">—</div></div>
+        <div class="info-card"><div class="label">公開中求人</div><div class="value" id="infoJobs">—</div></div>
+        <div class="info-card"><div class="label">マッチング実績</div><div class="value" id="infoMatch">—</div></div>
+        <div class="info-card"><div class="label">最新募集日</div><div class="value" id="infoDate">—</div></div>
+        <div class="info-card"><div class="label">企業名</div><div class="value" id="infoCompany">—</div></div>
+      </div>
+    </div>
+    <div class="panel-section" style="border-bottom:none;"><h3>リアクション</h3></div>
+    <div class="reaction-grid">
+      <button class="reaction-btn hoshii" id="btnHoshii" onclick="react('hoshii')">
+        <span class="emoji">❤️</span>
+        <span class="rlabel">働きたい！</span>
+        <span class="rcount" id="countHoshii">0人</span>
+      </button>
+      <button class="reaction-btn kininaru" id="btnKininaru" onclick="react('kininaru')">
+        <span class="emoji">👀</span>
+        <span class="rlabel">気になる</span>
+        <span class="rcount" id="countKininaru">0人</span>
+      </button>
+    </div>
+  </div>
+  <div id="map"></div>
+</div>
+
+<div class="stats-badge">
+  <div class="stat-item"><span class="num" id="statTotal">—</span><span class="lbl">掲載店舗</span></div>
+  <div class="stat-divider"></div>
+  <div class="stat-item"><span class="num teal" id="statHoshii">—</span><span class="lbl">働きたい</span></div>
+</div>
+
+<script>
+// ── カテゴリ定義 ───────────────────────────────────────────
+const CATEGORIES = [
+  { id:'all',      label:'すべて',         emoji:'🗺️', color:'#7a7f9a' },
+  { id:'french',   label:'フレンチ',       emoji:'🥂', color:'#a78bfa' },
+  { id:'italian',  label:'イタリアン',     emoji:'🍕', color:'#f97316' },
+  { id:'chinese',  label:'中華',           emoji:'🥟', color:'#eab308' },
+  { id:'western',  label:'洋食',           emoji:'🍖', color:'#3b82f6' },
+  { id:'izakaya',  label:'居酒屋',         emoji:'🍶', color:'#10b981' },
+  { id:'steak',    label:'鉄板・ステーキ', emoji:'🥩', color:'#ef4444' },
+  { id:'yakiniku', label:'焼肉',           emoji:'🔥', color:'#f59e0b' },
+  { id:'hotel',    label:'ホテル/旅館',    emoji:'🏨', color:'#06b6d4' },
+  { id:'sushi',    label:'寿司',           emoji:'🍣', color:'#ec4899' },
+  { id:'ramen',    label:'ラーメン',       emoji:'🍜', color:'#84cc16' },
+];
+const catMap = Object.fromEntries(CATEGORIES.map(c => [c.id, c]));
+
+// ── State ─────────────────────────────────────────────────
+let stores = [];
+let activeFilter = 'all';
+let currentStore = null;
+let leafletMarkers = [];
+let userReactions = JSON.parse(localStorage.getItem('cheflink_reactions') || '{}');
+
+// ── Map ───────────────────────────────────────────────────
+const map = L.map('map', { center:[35.673,139.727], zoom:13, zoomControl:false });
+L.control.zoom({ position:'bottomright' }).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution:'© OpenStreetMap contributors', maxZoom:19
+}).addTo(map);
+map.on('click', closePanel);
+
+// ── Filter Bar ────────────────────────────────────────────
+const filterBar = document.getElementById('filterBar');
+CATEGORIES.forEach(cat => {
+  const pill = document.createElement('button');
+  pill.className = 'filter-pill' + (cat.id === 'all' ? ' active' : '');
+  pill.dataset.id = cat.id;
+  pill.innerHTML = `<span class="dot" style="background:${cat.color}"></span>${cat.emoji} ${cat.label}`;
+  pill.onclick = () => setFilter(cat.id);
+  filterBar.appendChild(pill);
+});
+
+function setFilter(id) {
+  activeFilter = id;
+  document.querySelectorAll('.filter-pill').forEach(p => p.classList.toggle('active', p.dataset.id === id));
+  renderMarkers();
+}
+
+// ── Load Stores from GAS ──────────────────────────────────
+async function loadStores(silent = false) {
+  if (!silent) showLoading(true);
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('spinning');
+
+  try {
+    if (!GAS_URL || GAS_URL === 'YOUR_GAS_DEPLOY_URL_HERE') {
+      // デモモード：サンプルデータで動作
+      stores = DEMO_STORES;
+      setStatus('ok');
+      showToast('⚠️ デモモード：GAS_URLを設定してください', 4000);
+    } else {
+      const res  = await fetch(GAS_URL);
+      const data = await res.json();
+      if (data.status !== 'ok') throw new Error(data.message);
+      stores = data.stores;
+      setStatus('ok');
+    }
+    renderMarkers();
+    updateStats();
+    if (currentStore) {
+      const updated = stores.find(s => String(s.id) === String(currentStore.id));
+      if (updated) { currentStore = updated; updateReactionUI(updated); }
+    }
+  } catch (err) {
+    setStatus('err');
+    if (!silent) showToast('❌ データの取得に失敗しました');
+    console.error(err);
+  } finally {
+    showLoading(false);
+    btn.classList.remove('spinning');
+  }
+}
+
+// ── POST reaction to GAS ──────────────────────────────────
+async function postReaction(storeId, type, delta) {
+  if (!GAS_URL || GAS_URL === 'YOUR_GAS_DEPLOY_URL_HERE') return; // デモ時はスキップ
+  await fetch(GAS_URL, {
+    method: 'POST',
+    body: JSON.stringify({ store_id: storeId, type, delta }),
+    headers: { 'Content-Type': 'application/json' }
+  });
+}
+
+// ── Markers ───────────────────────────────────────────────
+function renderMarkers() {
+  leafletMarkers.forEach(m => map.removeLayer(m));
+  leafletMarkers = [];
+
+  const filtered = activeFilter === 'all' ? stores : stores.filter(s => s.category === activeFilter);
+  filtered.forEach(store => {
+    const color = catMap[store.category]?.color || '#7a7f9a';
+    const el = document.createElement('div');
+    el.style.cssText = `width:16px;height:16px;border-radius:50%;background:${color};border:2.5px solid rgba(255,255,255,0.3);cursor:pointer;box-shadow:0 0 0 3px ${color}44;transition:transform 0.15s;`;
+    el.onmouseenter = () => el.style.transform = 'scale(1.6)';
+    el.onmouseleave = () => el.style.transform = 'scale(1)';
+
+    const marker = L.marker([Number(store.lat), Number(store.lng)], {
+      icon: L.divIcon({ html: el, className:'', iconSize:[16,16], iconAnchor:[8,8] })
+    });
+    marker.on('click', e => { e.originalEvent.stopPropagation(); openPanel(store); });
+    marker.addTo(map);
+    leafletMarkers.push(marker);
+  });
+}
+
+// ── Panel ─────────────────────────────────────────────────
+function openPanel(store) {
+  currentStore = store;
+  const cat   = catMap[store.category] || catMap['all'];
+  document.getElementById('panelIcon').textContent = cat.emoji;
+  document.getElementById('panelName').textContent = store.name;
+  document.getElementById('panelCat').textContent  = cat.label;
+  document.getElementById('panelBadge').querySelector('span').style.color = cat.color;
+  document.getElementById('panelAddr').textContent    = store.address;
+  document.getElementById('infoStation').textContent  = store.station  || '—';
+  document.getElementById('infoStaff').textContent    = store.staff    || '—';
+  document.getElementById('infoJobs').textContent     = store.jobs     || '—';
+  document.getElementById('infoMatch').textContent    = store.match_count || '—';
+  document.getElementById('infoDate').textContent     = store.latest_date  || '—';
+  document.getElementById('infoCompany').textContent  = store.company  || '—';
+  updateReactionUI(store);
+  document.getElementById('sidePanel').classList.add('open');
+}
+function closePanel() {
+  document.getElementById('sidePanel').classList.remove('open');
+  currentStore = null;
+}
+
+// ── Reactions ─────────────────────────────────────────────
+async function react(type) {
+  if (!currentStore) return;
+  const key     = `${currentStore.id}_${type}`;
+  const already = userReactions[key];
+  const delta   = already ? -1 : 1;
+
+  // 楽観的UI更新
+  currentStore[type] = Math.max(0, (Number(currentStore[type]) || 0) + delta);
+  if (already) delete userReactions[key];
+  else userReactions[key] = true;
+  localStorage.setItem('cheflink_reactions', JSON.stringify(userReactions));
+  updateReactionUI(currentStore);
+  updateStats();
+
+  // ローディング状態
+  const btn = document.getElementById(type === 'hoshii' ? 'btnHoshii' : 'btnKininaru');
+  btn.classList.add('loading');
+
+  try {
+    await postReaction(currentStore.id, type, delta);
+  } catch (err) {
+    // 失敗時はロールバック
+    currentStore[type] = Math.max(0, currentStore[type] - delta);
+    if (already) userReactions[key] = true;
+    else delete userReactions[key];
+    localStorage.setItem('cheflink_reactions', JSON.stringify(userReactions));
+    updateReactionUI(currentStore);
+    showToast('❌ リアクションの保存に失敗しました');
+  } finally {
+    btn.classList.remove('loading');
+  }
+}
+
+function updateReactionUI(store) {
+  document.getElementById('countHoshii').textContent  = (store.hoshii   || 0) + '人';
+  document.getElementById('countKininaru').textContent = (store.kininaru || 0) + '人';
+  document.getElementById('btnHoshii').classList.toggle('active',   !!userReactions[`${store.id}_hoshii`]);
+  document.getElementById('btnKininaru').classList.toggle('active', !!userReactions[`${store.id}_kininaru`]);
+}
+
+// ── Stats ─────────────────────────────────────────────────
+function updateStats() {
+  const filtered    = activeFilter === 'all' ? stores : stores.filter(s => s.category === activeFilter);
+  const totalHoshii = stores.reduce((a, s) => a + (Number(s.hoshii) || 0), 0);
+  document.getElementById('statTotal').textContent  = filtered.length;
+  document.getElementById('statHoshii').textContent = totalHoshii;
+}
+
+// ── UI helpers ────────────────────────────────────────────
+function showLoading(v) { document.getElementById('loadingOverlay').classList.toggle('hidden', !v); }
+function setStatus(s) {
+  const dot = document.getElementById('statusDot');
+  dot.className = 'status-dot ' + s;
+}
+let toastTimer;
+function showToast(msg, duration = 3000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), duration);
+}
+
+// ── デモ用サンプルデータ（GAS未設定時に使用） ────────────
+const DEMO_STORES = [
+  { id:1, name:'アニヴェルセル 表参道', category:'hotel',   address:'東京都港区北青山3丁目5-30',  lat:35.6697, lng:139.7133, station:'表参道駅（110m）',     staff:'—',    jobs:'—',   match_count:'—',   latest_date:'—',          company:'アニヴェルセル株式会社', hoshii:0, kininaru:1 },
+  { id:2, name:'ビストロ ル・シャン',   category:'french',  address:'東京都渋谷区恵比寿1-2-3',   lat:35.6467, lng:139.7133, station:'恵比寿駅（150m）',     staff:'12名', jobs:'2件', match_count:'5件', latest_date:'2025/04/20', company:'ル・シャン株式会社', hoshii:3, kininaru:2 },
+  { id:3, name:'トラットリア・ソレ',    category:'italian', address:'東京都港区六本木6-10-1',    lat:35.6628, lng:139.7311, station:'六本木駅（200m）',     staff:'8名',  jobs:'1件', match_count:'3件', latest_date:'2025/04/18', company:'ソレ株式会社', hoshii:1, kininaru:4 },
+  { id:4, name:'中国料理 龍宮',         category:'chinese', address:'東京都千代田区麹町2-1',     lat:35.6817, lng:139.7342, station:'麹町駅（80m）',        staff:'20名', jobs:'3件', match_count:'8件', latest_date:'2025/04/15', company:'龍宮フード', hoshii:5, kininaru:2 },
+  { id:5, name:'ステーキハウス IRON',   category:'steak',   address:'東京都港区赤坂4-3-2',       lat:35.6736, lng:139.7378, station:'赤坂見附駅（300m）',  staff:'15名', jobs:'1件', match_count:'2件', latest_date:'2025/04/22', company:'IRON株式会社', hoshii:7, kininaru:3 },
+  { id:6, name:'焼肉 炎の輝き',         category:'yakiniku',address:'東京都新宿区歌舞伎町1-2-3', lat:35.6944, lng:139.7031, station:'新宿駅（400m）',       staff:'10名', jobs:'2件', match_count:'6件', latest_date:'2025/04/10', company:'炎輝グループ', hoshii:2, kininaru:1 },
+  { id:7, name:'パークホテル東京',       category:'hotel',   address:'東京都港区東新橋1-7-1',    lat:35.6598, lng:139.7592, station:'汐留駅（120m）',       staff:'50名', jobs:'5件', match_count:'12件',latest_date:'2025/04/25', company:'パークホテル東京', hoshii:9, kininaru:6 },
+  { id:8, name:'鮨 匠',                 category:'sushi',   address:'東京都中央区銀座6-5-1',    lat:35.6706, lng:139.7651, station:'銀座駅（200m）',       staff:'6名',  jobs:'1件', match_count:'4件', latest_date:'2025/04/12', company:'匠フード', hoshii:4, kininaru:5 },
+  { id:9, name:'居酒屋 縁側',           category:'izakaya', address:'東京都新宿区新宿3-15-1',   lat:35.6896, lng:139.7016, station:'新宿三丁目駅（100m）', staff:'9名',  jobs:'2件', match_count:'7件', latest_date:'2025/04/08', company:'縁側株式会社', hoshii:3, kininaru:2 },
+  { id:10,name:'洋食 キッチン丸の内',   category:'western', address:'東京都千代田区丸の内1-1-1', lat:35.6812, lng:139.7671, station:'東京駅（50m）',        staff:'14名', jobs:'3件', match_count:'9件', latest_date:'2025/04/20', company:'丸の内ダイニング', hoshii:6, kininaru:3 },
+];
+
+// ── 起動 ──────────────────────────────────────────────────
+loadStores();
+// 5分ごとに自動更新
+setInterval(() => loadStores(true), 5 * 60 * 1000);
+</script>
+</body>
+</html>
