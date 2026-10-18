@@ -9,7 +9,8 @@
     "preview": "vite preview --host",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "e2e": "node e2e/run.mjs"
+    "e2e": "node e2e/run.mjs",
+    "publish": "npm run build && rm -rf ../day-techo && cp -r dist ../day-techo && touch ../.nojekyll"
   },
   "dependencies": {
     "react": "^19.3.1",
