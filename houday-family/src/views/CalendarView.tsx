@@ -119,12 +119,12 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
       )}
 
       <div className="month-nav">
-        <button className="small secondary" onClick={() => setMonth(addMonths(month, -1))}>
-          ← 前の月
+        <button className="small secondary" aria-label="前の月" onClick={() => setMonth(addMonths(month, -1))}>
+          ← 前
         </button>
         <strong>{monthTitle(month)}</strong>
-        <button className="small secondary" onClick={() => setMonth(addMonths(month, 1))}>
-          次の月 →
+        <button className="small secondary" aria-label="次の月" onClick={() => setMonth(addMonths(month, 1))}>
+          次 →
         </button>
       </div>
 
@@ -154,8 +154,9 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
                 .map((p) => {
                   const f = facilityById.get(p.facilityId);
                   return (
-                    <span key={p.id} className="chip" style={{ background: f?.color }}>
-                      {f?.name}
+                    // マスが狭いので頭の2文字だけ。どのデイかは色と下の凡例で分かる
+                    <span key={p.id} className="chip" style={{ background: f?.color }} title={f?.name}>
+                      {Array.from(f?.name ?? '').slice(0, 2).join('')}
                     </span>
                   );
                 })}
@@ -208,9 +209,9 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
           <label htmlFor="weekly-facility">デイ</label>
           <FacilitySelect id="weekly-facility" />
           <label>曜日</label>
-          <div className="row">
+          <div className="weekdays">
             {WEEKDAY_HEADERS.map((label, i) => (
-              <label key={label} className="inline">
+              <label key={label}>
                 <input type="checkbox" name="weekday" value={(i + 1) % 7} />
                 {label}
               </label>
@@ -247,9 +248,9 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
               <li key={p.id} className={p.status === 'cancelled' ? 'cancelled' : undefined}>
                 <span className="what">
                   <span className="swatch" style={{ background: f?.color }} />
-                  {formatJapaneseDate(p.date)} {f?.name}
-                  {times && <span className="muted"> {times}</span>}
-                  {p.note && <span className="muted">（{p.note}）</span>}
+                  <strong>{formatJapaneseDate(p.date)}</strong> {f?.name}
+                  {times && <span className="sub">{times}</span>}
+                  {p.note && <span className="sub">メモ: {p.note}</span>}
                 </span>
                 <span className="actions">
                   <button

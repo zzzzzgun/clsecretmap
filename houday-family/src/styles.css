@@ -215,4 +215,66 @@ button.link {
 details summary { cursor: pointer; }
 
 .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 0.85rem; margin: 8px 0 0; }
-.plan-list .what .muted { white-space: nowrap; }
+
+/* ---- スマホの狭い画面向けの調整 ---- */
+
+/* 中身が長くても横にはみ出さない（はみ出すと iPhone が画面全体を縮めて表示してしまう） */
+.row > * { min-width: 0; }
+.what { min-width: 0; overflow-wrap: anywhere; }
+.what .sub { display: block; color: var(--muted); font-size: 0.85rem; }
+
+/* 予定一覧: 左に内容、右にボタン（縦に並べる） */
+.plan-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.plan-list .actions { flex-direction: column; align-items: stretch; gap: 6px; }
+.plan-list .actions button { white-space: nowrap; }
+
+/* 月・週の切り替え: 真ん中の文字は折り返してよい */
+.month-nav { gap: 8px; }
+.month-nav strong { flex: 1; text-align: center; min-width: 0; }
+.month-nav button { flex: 0 0 auto; white-space: nowrap; margin-top: 0; }
+
+/* 曜日の選択: 7つを1行に */
+.weekdays { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.weekdays label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin: 0;
+  font-weight: 400;
+}
+.weekdays input { width: 22px; height: 22px; margin: 0; }
+
+/* カレンダーのマスの中の名前（頭の2文字） */
+.calendar .chip { text-overflow: clip; text-align: center; padding: 0 2px; }
+
+/* iPhone の Safari で日付・時刻の入力欄が崩れないように */
+input[type='date'], input[type='time'] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  min-width: 0;
+  min-height: 46px;
+}
+input::-webkit-date-and-time-value { text-align: left; }
+
+/* チェックボックスを押しやすく */
+label.inline input[type='checkbox'] { width: 20px; height: 20px; flex: 0 0 auto; margin-top: 3px; }
+
+@media (max-width: 360px) {
+  main { padding-left: 12px; padding-right: 12px; }
+  .card { padding: 12px; }
+  .tabbar button { font-size: 0.72rem; padding: 6px 2px; }
+}
+
+/* 送る文面の見本（全文をそのまま見せる） */
+.message-preview {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 8px 0;
+  font-size: 0.95rem;
+}

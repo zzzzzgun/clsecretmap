@@ -86,11 +86,11 @@ ok(await page.isVisible('text=2026-04-01 〜 2026-12-10・月10日'), '受給者
 // カレンダー: 11月の火・木をまとめて入れる
 await page.click('.tabbar >> text=カレンダー');
 ok(await page.isVisible('text=受給者証の有効期限（2026-12-10）まであと53日'), '受給者証の期限が近いと知らせる');
-await page.click('text=次の月 →');
+await page.click('[aria-label="次の月"]');
 await page.click('summary:has-text("曜日でまとめて追加")');
 await page.selectOption('#weekly-facility', { label: 'ひまわりデイ' });
-await page.check('label.inline:has-text("火") input');
-await page.check('label.inline:has-text("木") input');
+await page.check('.weekdays label:has-text("火") input');
+await page.check('.weekdays label:has-text("木") input');
 await page.fill('#weekly-pickup', '15:00');
 await page.click('text=まとめて追加 >> nth=-1');
 ok(await page.isVisible('text=利用 8日 / 支給 10日（残り2日）'), '曜日でまとめて8日入り、残り日数が出る');
@@ -124,13 +124,13 @@ await page.screenshot({ path: `${OUT}04-log.png`, fullPage: true });
 
 // 連絡: 学校向けの週の予定と、デイへの希望日の文面
 await page.click('.tabbar >> text=連絡');
-const requests = await page.locator('textarea[readonly]').evaluateAll((els) => els.map((e) => e.value));
+const requests = await page.locator('.message-preview').allTextContents();
 const himawari = requests.find((t) => t.startsWith('ひまわりデイ'));
 ok(Boolean(himawari?.includes('・11/3(火) 迎え 15:00') && himawari?.includes('計8日')), 'デイへの希望日の文面に11月の8日分が入る');
 await page.screenshot({ path: `${OUT}05-messages.png`, fullPage: true });
 ok(await page.isVisible('strong:has-text("（来週）")'), '週末に開くと来週の予定が出る');
-await page.click('text=次の週 →');
-await page.click('text=次の週 →');
+await page.click('[aria-label="次の週"]');
+await page.click('[aria-label="次の週"]');
 const nov5 = await page.locator('tr:has(th:has-text("11/5(木)")) td').textContent();
 ok(nov5.includes('ひまわりデイ（迎え 15:00）') && nov5.includes('さくらデイ'), `学校向けの週の予定に、その日のデイが並ぶ（${nov5}）`);
 await page.screenshot({ path: `${OUT}06-school-week.png` });
@@ -138,7 +138,7 @@ await page.screenshot({ path: `${OUT}06-school-week.png` });
 // 再読み込みしても残る
 await page.reload();
 await page.click('.tabbar >> text=カレンダー');
-await page.click('text=次の月 →');
+await page.click('[aria-label="次の月"]');
 ok(await page.isVisible('text=利用 8日 / 支給 10日（残り2日）'), '再読み込みしてもデータが残る');
 
 // バックアップ → 全部消えた状態に戻す

@@ -6,6 +6,10 @@ import { requestMessage, schoolWeekMessage } from '../messages';
 import type { Child } from '../model';
 import { useStore } from '../store';
 
+function monthDay(date: string) {
+  return `${Number(date.slice(5, 7))}/${Number(date.slice(8))}`;
+}
+
 function monthTitle(month: string) {
   return `${month.slice(0, 4)}年${Number(month.slice(5))}月`;
 }
@@ -30,16 +34,16 @@ export function MessagesView({ child }: { child: Child }) {
       <h2>学校へ：週のデイの予定</h2>
       <div className="card">
         <div className="month-nav">
-          <button className="small secondary" onClick={() => setWeekStart(addDays(weekStart, -7))}>
-            ← 前の週
+          <button className="small secondary" aria-label="前の週" onClick={() => setWeekStart(addDays(weekStart, -7))}>
+            ← 前
           </button>
           <strong>
-            {formatJapaneseDate(weekStart)}〜{formatJapaneseDate(addDays(weekStart, 4))}
+            {monthDay(weekStart)}〜{monthDay(addDays(weekStart, 4))}
             {weekStart === thisMonday && '（今週）'}
             {weekStart === addDays(thisMonday, 7) && '（来週）'}
           </strong>
-          <button className="small secondary" onClick={() => setWeekStart(addDays(weekStart, 7))}>
-            次の週 →
+          <button className="small secondary" aria-label="次の週" onClick={() => setWeekStart(addDays(weekStart, 7))}>
+            次 →
           </button>
         </div>
         <table className="week-table">
@@ -69,12 +73,12 @@ export function MessagesView({ child }: { child: Child }) {
         <h2>デイへ：利用希望日の連絡</h2>
         <div className="card">
           <div className="month-nav">
-            <button className="small secondary" onClick={() => setRequestMonth(addMonths(requestMonth, -1))}>
-              ← 前の月
+            <button className="small secondary" aria-label="前の月" onClick={() => setRequestMonth(addMonths(requestMonth, -1))}>
+              ← 前
             </button>
             <strong>{monthTitle(requestMonth)}</strong>
-            <button className="small secondary" onClick={() => setRequestMonth(addMonths(requestMonth, 1))}>
-              次の月 →
+            <button className="small secondary" aria-label="次の月" onClick={() => setRequestMonth(addMonths(requestMonth, 1))}>
+              次 →
             </button>
           </div>
           <p className="muted">カレンダーに入れた予定から、デイごとの文面を作ります。LINE やメールに貼って送ってください。</p>
@@ -92,7 +96,7 @@ export function MessagesView({ child }: { child: Child }) {
                 <span className="swatch" style={{ background: f.color }} />
                 {f.name}
               </strong>
-              <textarea readOnly value={text} rows={Math.min(14, text.split('\n').length + 1)} />
+              <p className="message-preview">{text}</p>
               <CopyButton text={text} label="文面をコピー" />
             </div>
           );
