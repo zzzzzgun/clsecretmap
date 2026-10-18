@@ -1,0 +1,165 @@
+:root {
+  --bg: #f7f6f2;
+  --surface: #ffffff;
+  --text: #24252a;
+  --muted: #6b6d76;
+  --border: #e2e0d8;
+  --accent: #2f6fde;
+  --accent-soft: #e6eefc;
+  --warn: #b25e00;
+  --warn-soft: #fff1de;
+  --danger: #c0352b;
+  --danger-soft: #fde8e6;
+  --radius: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #17181c;
+    --surface: #212227;
+    --text: #ecedf0;
+    --muted: #a0a2ab;
+    --border: #34353c;
+    --accent: #7aa7ff;
+    --accent-soft: #24324d;
+    --warn: #ffb560;
+    --warn-soft: #3a2c19;
+    --danger: #ff8a80;
+    --danger-soft: #3d2120;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+  line-height: 1.6;
+}
+
+a { color: var(--accent); }
+
+main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px 16px 96px;
+}
+
+h1 { font-size: 1.35rem; margin: 8px 0 16px; }
+h2 { font-size: 1.1rem; margin: 24px 0 8px; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.muted { color: var(--muted); font-size: 0.9rem; }
+
+.notice { border-radius: var(--radius); padding: 10px 14px; margin-bottom: 12px; }
+.notice.warn { background: var(--warn-soft); color: var(--warn); }
+.notice.danger { background: var(--danger-soft); color: var(--danger); }
+.notice.info { background: var(--accent-soft); color: var(--text); }
+
+label { display: block; font-weight: 600; margin: 12px 0 4px; }
+label.inline { display: flex; gap: 8px; align-items: flex-start; font-weight: 400; }
+
+input[type='text'], input[type='email'], input[type='date'], input[type='time'], input[type='number'],
+select, textarea {
+  width: 100%;
+  font: inherit;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+textarea { min-height: 96px; resize: vertical; }
+
+button, .button {
+  display: inline-block;
+  font: inherit;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  text-decoration: none;
+  margin-top: 12px;
+}
+
+button.secondary { background: transparent; color: var(--accent); }
+button.danger { background: transparent; color: var(--danger); border-color: var(--danger); }
+button.small { padding: 4px 10px; font-size: 0.85rem; margin-top: 0; }
+
+.row { display: flex; gap: 12px; flex-wrap: wrap; }
+.row > * { flex: 1 1 140px; }
+
+/* 下部ナビゲーション（スマホで親指が届く位置） */
+.tabbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-around;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 6px 0 calc(6px + env(safe-area-inset-bottom));
+}
+.tabbar a { color: var(--muted); text-decoration: none; font-size: 0.8rem; padding: 6px 10px; }
+
+/* カレンダー */
+.month-nav { display: flex; justify-content: space-between; align-items: center; }
+.calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.calendar .dow { text-align: center; font-size: 0.75rem; color: var(--muted); }
+.calendar .day {
+  min-height: 64px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px;
+  font-size: 0.75rem;
+  overflow: hidden;
+}
+.calendar .day.today { outline: 2px solid var(--accent); }
+.calendar .day.conflict { border-color: var(--danger); background: var(--danger-soft); }
+.calendar .num { font-weight: 600; }
+.calendar .chip {
+  display: block;
+  border-radius: 4px;
+  padding: 0 4px;
+  margin-top: 2px;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.plan-list { list-style: none; padding: 0; margin: 0; }
+.plan-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.plan-list li.cancelled .what { text-decoration: line-through; color: var(--muted); }
+
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+
+.share-url { word-break: break-all; font-family: ui-monospace, monospace; font-size: 0.85rem; }
+
+@media print {
+  .tabbar, .no-print { display: none !important; }
+  body { background: #fff; color: #000; }
+  .card { border-color: #999; break-inside: avoid; }
+}
