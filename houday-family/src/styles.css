@@ -278,3 +278,8 @@ label.inline input[type='checkbox'] { width: 20px; height: 20px; flex: 0 0 auto;
   margin: 8px 0;
   font-size: 0.95rem;
 }
+
+/* ボタンのまわりの余白（枠や入力欄にくっつかないように） */
+main > button,
+main > .actions { margin-bottom: 16px; }
+form > .actions { margin-top: 16px; }
