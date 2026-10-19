@@ -66,7 +66,7 @@ export function TimesFields({
       <div className="row">
         <div>
           <label htmlFor={`${idPrefix}-pickup`}>
-            {value.pickupFrom === 'home' ? 'お迎え（家）' : value.periods == null ? '下校時刻（入力してください）' : 'お迎え（下校）'}
+            {value.pickupFrom === 'home' ? 'お迎え（家）' : value.periods == null ? '下校時刻' : 'お迎え（下校）'}
           </label>
           <input
             id={`${idPrefix}-pickup`}
@@ -86,6 +86,9 @@ export function TimesFields({
           />
         </div>
       </div>
+      {value.pickupFrom === 'school' && value.periods == null && !value.pickupTime && (
+        <p className="warn-text hint">授業が「その他」の日は、下校時刻を入れてください。</p>
+      )}
     </>
   );
 }

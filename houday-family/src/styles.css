@@ -323,3 +323,4 @@ label.sublabel { font-weight: 400; font-size: 0.85rem; margin-top: 4px; }
 input.needs-input { border: 2px solid var(--warn); background: var(--warn-soft); }
 .facility-times .weekdays label { font-size: 0.85rem; }
 .warn-text { color: var(--warn); }
+.hint { font-size: 0.85rem; margin: 4px 0 0; }
