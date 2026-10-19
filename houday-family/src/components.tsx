@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getPhoto } from './storage';
+import { facilitiesForChild } from './model';
 import { useStore } from './store';
 
 export function CopyButton({ text, label = 'コピー' }: { text: string; label?: string }) {
@@ -52,14 +53,16 @@ export function FacilitySelect({
   name = 'facilityId',
   allowNone = false,
   defaultId,
+  childId,
 }: {
   id: string;
+  childId: string;
   name?: string;
   allowNone?: boolean;
   defaultId?: string;
 }) {
   const { state } = useStore();
-  const active = state.facilities.filter((f) => !f.archived);
+  const active = facilitiesForChild(state.facilities, childId).filter((f) => !f.archived);
   return (
     <select id={id} name={name} required={!allowNone} defaultValue={defaultId ?? active[0]?.id ?? ''}>
       {allowNone && <option value="">（デイ以外・家での様子）</option>}

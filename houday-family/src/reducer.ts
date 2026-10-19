@@ -14,9 +14,10 @@ export type Action =
   | { type: 'addChild'; child: Child }
   | { type: 'updateChild'; child: Child }
   | { type: 'removeChild'; childId: string }
-  | { type: 'addFacility'; id: string; name: string }
+  | { type: 'addFacility'; id: string; name: string; childIds?: string[] }
   | { type: 'renameFacility'; id: string; name: string }
   | { type: 'setFacilityArchived'; id: string; archived: boolean }
+  | { type: 'setFacilityChildren'; id: string; childIds: string[] }
   | { type: 'updateFacilityTimes'; id: string; times: Pick<Facility, 'weekdayReturn' | 'homePickup' | 'homeReturn' | 'openOnHolidays' | 'closedWeekdays' | 'hours'> }
   | { type: 'addCertificate'; certificate: Certificate }
   | { type: 'removeCertificate'; id: string }
@@ -60,6 +61,7 @@ export function reducer(state: AppState, action: Action): AppState {
             name: action.name,
             color: FACILITY_COLORS[state.facilities.length % FACILITY_COLORS.length],
             archived: false,
+            ...(action.childIds ? { childIds: action.childIds } : {}),
           },
         ],
       };
@@ -74,6 +76,12 @@ export function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         facilities: state.facilities.map((f) => (f.id === action.id ? { ...f, archived: action.archived } : f)),
+      };
+
+    case 'setFacilityChildren':
+      return {
+        ...state,
+        facilities: state.facilities.map((f) => (f.id === action.id ? { ...f, childIds: action.childIds } : f)),
       };
 
     case 'updateFacilityTimes':

@@ -3,7 +3,7 @@ import { weeklySchoolSchedule } from '@domain/schedule';
 import { useState } from 'react';
 import { CopyButton } from '../components';
 import { requestMessage, schoolDayLine, schoolWeekMessage } from '../messages';
-import type { Child } from '../model';
+import { facilitiesForChild, type Child } from '../model';
 import { useStore } from '../store';
 
 function monthDay(date: string) {
@@ -27,7 +27,7 @@ export function MessagesView({ child }: { child: Child }) {
   const days = weeklySchoolSchedule(plans, state.facilities, weekStart, 5);
   const schoolText = schoolWeekMessage({ child, days });
 
-  const activeFacilities = state.facilities.filter((f) => !f.archived);
+  const activeFacilities = facilitiesForChild(state.facilities, child.id).filter((f) => !f.archived);
 
   return (
     <>

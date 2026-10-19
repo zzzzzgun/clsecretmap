@@ -81,7 +81,7 @@ export function LogView({ child }: { child: Child }) {
           </div>
           <div>
             <label htmlFor="log-facility">どこで</label>
-            <FacilitySelect id="log-facility" allowNone defaultId={todaysFacility} />
+            <FacilitySelect id="log-facility" allowNone defaultId={todaysFacility} childId={child.id} />
           </div>
         </div>
         <label htmlFor="log-text">様子</label>

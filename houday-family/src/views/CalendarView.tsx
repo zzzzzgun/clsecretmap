@@ -12,7 +12,7 @@ import {
   planTimesText,
   type PlanTimes,
 } from '../dayType';
-import type { Child, PlanEntry } from '../model';
+import { facilitiesForChild, type Child, type PlanEntry } from '../model';
 import { newId, useStore } from '../store';
 import { PlanEditForm, TimesFields } from './PlanForms';
 
@@ -27,7 +27,11 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
   const today = todayInTokyo();
   const [month, setMonth] = useState(monthOf(today));
   const defaultAddDate = month === monthOf(today) ? today : `${month}-01`;
-  const activeFacilities = state.facilities.filter((f) => !f.archived);
+  const activeFacilities = facilitiesForChild(state.facilities, child.id).filter((f) => !f.archived);
+  const [viewAll, setViewAll] = useState(false);
+  const showAll = viewAll && state.children.length > 1;
+  const shownChildren = showAll ? state.children : [child];
+  const childById = new Map(state.children.map((c) => [c.id, c]));
   const [addDate, setAddDate] = useState<string | null>(null);
   const [addFacilityId, setAddFacilityId] = useState<string | null>(null);
   const [addTimes, setAddTimes] = useState<PlanTimes | null>(null);
@@ -42,14 +46,27 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
   }
 
   const facilityById = new Map(state.facilities.map((f) => [f.id, f]));
-  const childPlans = state.plans.filter((p) => p.childId === child.id);
-  const monthPlans = childPlans
+  const shownIds = new Set(shownChildren.map((c) => c.id));
+  const monthPlans = state.plans
+    .filter((p) => shownIds.has(p.childId))
     .filter((p) => monthOf(p.date) === month)
     .sort((a, b) => a.date.localeCompare(b.date) || (a.pickupTime ?? '').localeCompare(b.pickupTime ?? ''));
   const certificates = state.certificates.filter((c) => c.childId === child.id);
 
-  const allowance = monthlyAllowance(certificates, childPlans, month);
-  const doubleBookings = findDoubleBookings(monthPlans);
+  // 残り日数と重複は子どもごとに数える（受給者証は一人ずつ）
+  const summaries = shownChildren.map((c) => {
+    const plans = monthPlans.filter((p) => p.childId === c.id);
+    return {
+      child: c,
+      allowance: monthlyAllowance(
+        state.certificates.filter((x) => x.childId === c.id),
+        state.plans.filter((p) => p.childId === c.id),
+        month,
+      ),
+      doubleBookings: findDoubleBookings(plans),
+    };
+  });
+  const conflictDates = new Set(summaries.flatMap((x) => [...x.doubleBookings.keys()]));
   const certAlert = certificateAlert(certificates, today);
 
   const dates = datesInMonth(month);
@@ -150,16 +167,32 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
         <p className="notice danger">受給者証の有効期限（{certAlert.validUntil}）が切れています。</p>
       )}
 
-      {doubleBookings.size > 0 && (
+      {conflictDates.size > 0 && (
         <div className="notice danger">
           同じ日に2か所のデイが入っています。受給者証で使えるのは1日1か所までで、2か所目は全額自己負担になることがあります。
           <ul>
-            {[...doubleBookings.entries()].map(([date, ids]) => (
-              <li key={date}>
-                {formatDateWithHoliday(date)}: {ids.map((id) => facilityById.get(id)?.name).join('、')}
-              </li>
-            ))}
+            {summaries.flatMap((x) =>
+              [...x.doubleBookings.entries()].map(([date, ids]) => (
+                <li key={`${x.child.id}-${date}`}>
+                  {showAll && `${x.child.name}さん `}
+                  {formatDateWithHoliday(date)}: {ids.map((id) => facilityById.get(id)?.name).join('、')}
+                </li>
+              )),
+            )}
           </ul>
+        </div>
+      )}
+
+      {state.children.length > 1 && (
+        <div className="segmented view-toggle" role="radiogroup" aria-label="表示する子ども">
+          <label className={!showAll ? 'on' : undefined}>
+            <input type="radio" name="calendar-view" checked={!showAll} onChange={() => setViewAll(false)} />
+            {child.name}さん
+          </label>
+          <label className={showAll ? 'on' : undefined}>
+            <input type="radio" name="calendar-view" checked={showAll} onChange={() => setViewAll(true)} />
+            全員
+          </label>
         </div>
       )}
 
@@ -173,11 +206,14 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
         </button>
       </div>
 
-      {allowance && (
-        <p className={allowance.remaining < 0 ? 'notice danger' : 'notice info'}>
-          利用 {allowance.used}日 / 支給 {allowance.limit}日（
-          {allowance.remaining >= 0 ? `残り${allowance.remaining}日` : `${-allowance.remaining}日オーバー`}）
-        </p>
+      {summaries.map(
+        ({ child: c, allowance }) =>
+          allowance && (
+            <p key={c.id} className={allowance.remaining < 0 ? 'notice danger' : 'notice info'}>
+              {showAll && `${c.name}さん：`}利用 {allowance.used}日 / 支給 {allowance.limit}日（
+              {allowance.remaining >= 0 ? `残り${allowance.remaining}日` : `${-allowance.remaining}日オーバー`}）
+            </p>
+          ),
       )}
 
       <div className="calendar">
@@ -198,7 +234,7 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
             weekday === 0 && 'sunday',
             weekday === 6 && 'saturday',
             date === today && 'today',
-            doubleBookings.has(date) && 'conflict',
+            conflictDates.has(date) && 'conflict',
           ].filter(Boolean);
           return (
             <div key={date} className={classes.join(' ')} title={holiday ?? undefined}>
@@ -208,10 +244,13 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
                 .filter((p) => p.date === date && p.status === 'planned')
                 .map((p) => {
                   const f = facilityById.get(p.facilityId);
+                  const who = childById.get(p.childId)?.name ?? '';
                   return (
-                    // マスが狭いので頭の2文字だけ。どのデイかは色と下の凡例で分かる
-                    <span key={p.id} className="chip" style={{ background: f?.color }} title={f?.name}>
-                      {Array.from(f?.name ?? '').slice(0, 2).join('')}
+                    // マスが狭いので頭の2文字だけ（全員表示では子どもの名前の頭1文字＋デイの頭1文字）。どのデイかは色と下の凡例で分かる
+                    <span key={p.id} className="chip" style={{ background: f?.color }} title={showAll ? `${who}：${f?.name}` : f?.name}>
+                      {showAll
+                        ? `${Array.from(who)[0] ?? ''}${Array.from(f?.name ?? '')[0] ?? ''}`
+                        : Array.from(f?.name ?? '').slice(0, 2).join('')}
                     </span>
                   );
                 })}
@@ -228,7 +267,7 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
 
       <p className="legend">
         {state.facilities
-          .filter((f) => !f.archived)
+          .filter((f) => !f.archived && shownChildren.some((c) => !f.childIds || f.childIds.includes(c.id)))
           .map((f) => (
             <span key={f.id}>
               <span className="swatch" style={{ background: f.color }} />
@@ -237,7 +276,7 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
           ))}
       </p>
 
-      <h2>予定を追加</h2>
+      <h2>予定を追加{state.children.length > 1 && `（${child.name}さん）`}</h2>
       {missingSchoolTimes && (
         <p className="notice info">
           <button className="link" onClick={() => goTo('settings')}>設定</button>で下校時刻とデイのいつもの時刻を入れておくと、お迎え・帰宅の時刻が自動で入ります。
@@ -308,7 +347,7 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
         <summary>曜日でまとめて追加（{monthTitle(month)}）</summary>
         <form onSubmit={addWeekly}>
           <label htmlFor="weekly-facility">デイ</label>
-          <FacilitySelect id="weekly-facility" />
+          <FacilitySelect id="weekly-facility" childId={child.id} />
           <label>曜日</label>
           <div className="weekdays">
             {WEEKDAY_HEADERS.map((label, i) => (
@@ -337,16 +376,18 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
         <ul className="plan-list">
           {monthPlans.map((p) => {
             const f = facilityById.get(p.facilityId);
-            const times = planTimesText(child, p);
+            const planChild = childById.get(p.childId) ?? child;
+            const times = planTimesText(planChild, p);
             const warning =
               p.status === 'planned'
-                ? facilityClosedReason(f, p.date) ?? outsideHoursWarning(f, { ...p, pickupFrom: pickupFromOf(child, p) })
+                ? facilityClosedReason(f, p.date) ?? outsideHoursWarning(f, { ...p, pickupFrom: pickupFromOf(planChild, p) })
                 : null;
             return (
               <li key={p.id} className={p.status === 'cancelled' ? 'cancelled' : undefined}>
                 <span className="what">
                   <span className="swatch" style={{ background: f?.color }} />
                   <strong className={holidayName(p.date) ? 'holiday-text' : undefined}>{formatDateWithHoliday(p.date)}</strong>{' '}
+                  {showAll && <span className="who">{planChild.name}さん</span>}
                   {f?.name}
                   {holidayName(p.date) && <span className="sub holiday-text">{holidayName(p.date)}</span>}
                   {times && <span className="sub">{times}</span>}
@@ -371,7 +412,7 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
                     削除
                   </button>
                 </span>
-                {editingId === p.id && <PlanEditForm child={child} plan={p} onDone={() => setEditingId(null)} />}
+                {editingId === p.id && <PlanEditForm child={planChild} plan={p} onDone={() => setEditingId(null)} />}
               </li>
             );
           })}

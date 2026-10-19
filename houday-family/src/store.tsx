@@ -21,6 +21,8 @@ function toastFor(action: Action): string | null {
       return '保存しました';
     case 'addFacility':
       return `${action.name}を追加しました`;
+    case 'setFacilityChildren':
+      return '通っている子を保存しました';
     case 'updateFacilityTimes':
       return '時刻・営業日を保存しました';
     case 'setFacilityArchived':

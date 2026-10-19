@@ -16,7 +16,8 @@ export function SettingsView({ child, onSelectChild }: { child: Child; onSelectC
     e.preventDefault();
     const name = field(new FormData(e.currentTarget), 'name');
     if (!name) return;
-    dispatch({ type: 'addFacility', id: newId(), name });
+    // きょうだいがいるときは、まず今選んでいる子のデイとして登録する（あとで変えられる）
+    dispatch({ type: 'addFacility', id: newId(), name, childIds: state.children.length > 1 ? [child.id] : undefined });
     e.currentTarget.reset();
   }
 
@@ -73,6 +74,30 @@ export function SettingsView({ child, onSelectChild }: { child: Child; onSelectC
                 <span className="swatch" style={{ background: f.color }} />
                 {f.name}
                 {f.archived && '（通っていない）'}
+                {!f.archived && state.children.length > 1 && (
+                  <span className="facility-children">
+                    通っている子：
+                    {state.children.map((c) => {
+                      const ids = f.childIds ?? state.children.map((x) => x.id);
+                      return (
+                        <label key={c.id} className="inline">
+                          <input
+                            type="checkbox"
+                            checked={ids.includes(c.id)}
+                            onChange={(e) =>
+                              dispatch({
+                                type: 'setFacilityChildren',
+                                id: f.id,
+                                childIds: e.target.checked ? [...ids, c.id] : ids.filter((x) => x !== c.id),
+                              })
+                            }
+                          />
+                          {c.name}
+                        </label>
+                      );
+                    })}
+                  </span>
+                )}
                 {!f.archived && <FacilityTimesForm facility={f} />}
               </span>
               <button

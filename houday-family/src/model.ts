@@ -37,6 +37,8 @@ export interface Facility {
   /** 土日・祝日・学校が休みの日の、家へのお迎え時刻と帰宅時刻 */
   homePickup?: string | null;
   homeReturn?: string | null;
+  /** このデイに通っている子どもの ID（未登録は全員） */
+  childIds?: string[];
   /** 祝日も営業しているか（未登録は営業扱い） */
   openOnHolidays?: boolean;
   /** 定休日の曜日（0=日〜6=土） */
@@ -129,3 +131,7 @@ export const FACILITY_COLORS = ['#2f6fde', '#e0782b', '#2a9d6a', '#b04fc4', '#c9
 
 /** 書き直し前の内容をいくつまで残すか（1項目あたり） */
 export const MAX_HISTORY = 50;
+
+export function facilitiesForChild(facilities: readonly Facility[], childId: string): Facility[] {
+  return facilities.filter((f) => !f.childIds || f.childIds.includes(childId));
+}

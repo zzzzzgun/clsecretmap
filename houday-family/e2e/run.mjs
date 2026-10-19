@@ -219,6 +219,21 @@ await page2.waitForSelector('img.photo');
 ok(await page2.isVisible('text=自分から友だちを誘えた'), '別の端末でバックアップから記録と写真を戻せる');
 ok(await page2.isVisible('header >> text=たろうさん'), '戻したあとはバックアップのお子さんが表示される');
 
+// きょうだい: 子どもごとに通うデイを分け、カレンダーで全員の予定を見る
+await page.click('.tabbar >> text=設定');
+await page.fill('#sibling-name', 'はなこ');
+await page.click('form:has(#sibling-name) button[type=submit]');
+await page.locator('li:has-text("ひまわりデイ") .facility-children label:has-text("はなこ") input').uncheck();
+await page.click('.tabbar >> text=カレンダー');
+const options = await page.locator('#plan-facility option').allTextContents();
+ok(!options.includes('ひまわりデイ') && options.includes('さくらデイ'), '子どもが通っていないデイは選択肢に出ない');
+await page.click('[aria-label="次の月"]');
+await page.fill('#plan-date', '2026-11-06');
+await page.click('form:has(#plan-date) button[type=submit]');
+await page.click('.view-toggle label:has-text("全員")');
+ok(await page.isVisible('.calendar .chip:has-text("はさ")') && await page.isVisible('.calendar .chip:has-text("たひ")'), '全員表示では、きょうだいの予定が1つのカレンダーに出る');
+ok(await page.isVisible('.plan-list .who:has-text("はなこさん")'), '全員表示の予定一覧に子どもの名前が出る');
+
 ok(errors.length === 0, `ブラウザのエラーなし ${errors.join(' | ')}`);
 console.log(results.join('\n'));
 await browser.close();
