@@ -95,6 +95,13 @@ await page.locator('li:has-text("ひまわりデイ") input[name="homePickup"]')
 await page.locator('li:has-text("ひまわりデイ") input[name="homeReturn"]').fill('16:00');
 await page.locator('li:has-text("ひまわりデイ") form button[type=submit]').click();
 ok(await page.isVisible('text=平日 帰宅 17:30'), 'デイのいつもの時刻を登録できる');
+const sakura = page.locator('li:has-text("さくらデイ")');
+await sakura.locator('summary').click();
+await sakura.locator('input[name="openOnHolidays"][value="no"]').check();
+await sakura.locator('input[name="homeOpen"]').fill('10:00');
+await sakura.locator('input[name="homePickup"]').fill('09:30');
+await sakura.locator('form button[type=submit]').click();
+ok(await page.isVisible('text=祝日休み'), 'デイが祝日休みだと登録できる');
 
 // カレンダー: 11月の火・木をまとめて入れる
 await page.click('.tabbar >> text=カレンダー');
@@ -124,6 +131,18 @@ ok(
     (await page.inputValue('#plan-return')) === '17:30',
   '平日は学校からになり、曜日の授業時間の下校時刻が入る',
 );
+await page.fill('#plan-date', '2026-11-03');
+await page.selectOption('#plan-facility', { label: 'さくらデイ' });
+ok(await page.isVisible('text=さくらデイはこの日は休みです（祝日は休み）'), '祝日休みのデイを祝日に選ぶと知らせる');
+ok(await page.isVisible('text=が営業時間（10:00〜）より前です'), '営業時間より前のお迎えを知らせる');
+await page.selectOption('#plan-facility', { label: 'ひまわりデイ' });
+// 授業時間「その他」は下校時刻を自分で入れる
+await page.fill('#plan-date', '2026-11-19');
+await page.selectOption('#plan-periods', '');
+await page.fill('#plan-pickup', '13:10');
+await page.click('form:has(#plan-date) button[type=submit]');
+ok(await page.isVisible('text=学校お迎え 13:10・帰宅 17:30'), '授業時間「その他」では下校時刻を自分で入れられる');
+await page.locator('.plan-list li:has-text("11/19(木)") button:has-text("削除")').first().click();
 await page.fill('#plan-date', '2026-11-05');
 await page.selectOption('#plan-facility', { label: 'さくらデイ' });
 await page.click('form:has(#plan-date) button[type=submit]');

@@ -45,24 +45,32 @@ export function TimesFields({
             id={`${idPrefix}-periods`}
             value={value.periods ?? ''}
             onChange={(e) => {
-              const periods = e.target.value ? Number(e.target.value) : null;
+              if (!e.target.value) {
+                // その他: 下校時刻は自分で入れる（今の時刻は消さない）
+                onChange({ ...value, periods: null });
+                return;
+              }
+              const periods = Number(e.target.value);
               onChange({ ...timesFor(child, facility, date, 'school', periods), returnTime: value.returnTime });
             }}
           >
-            <option value="">わからない・その他</option>
             {PERIOD_OPTIONS.map((p) => (
               <option key={p} value={p}>
                 {p}時間授業{child.dismissal?.[String(p)] ? `（下校 ${child.dismissal[String(p)]}）` : ''}
               </option>
             ))}
+            <option value="">その他（下校時刻を自分で入力）</option>
           </select>
         </>
       )}
       <div className="row">
         <div>
-          <label htmlFor={`${idPrefix}-pickup`}>{value.pickupFrom === 'school' ? 'お迎え（下校）' : 'お迎え（家）'}</label>
+          <label htmlFor={`${idPrefix}-pickup`}>
+            {value.pickupFrom === 'home' ? 'お迎え（家）' : value.periods == null ? '下校時刻（入力してください）' : 'お迎え（下校）'}
+          </label>
           <input
             id={`${idPrefix}-pickup`}
+            className={value.pickupFrom === 'school' && value.periods == null && !value.pickupTime ? 'needs-input' : undefined}
             type="time"
             value={value.pickupTime ?? ''}
             onChange={(e) => onChange({ ...value, pickupTime: e.target.value || null })}

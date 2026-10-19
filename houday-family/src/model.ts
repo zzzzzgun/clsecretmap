@@ -37,6 +37,17 @@ export interface Facility {
   /** 土日・祝日・学校が休みの日の、家へのお迎え時刻と帰宅時刻 */
   homePickup?: string | null;
   homeReturn?: string | null;
+  /** 祝日も営業しているか（未登録は営業扱い） */
+  openOnHolidays?: boolean;
+  /** 定休日の曜日（0=日〜6=土） */
+  closedWeekdays?: number[];
+  /** 営業時間。平日（学校から）と、土日・祝日・学校が休みの日（家から）で別 */
+  hours?: { school?: OpeningHours; home?: OpeningHours };
+}
+
+export interface OpeningHours {
+  open: string | null;
+  close: string | null;
 }
 
 export interface Certificate {

@@ -98,3 +98,32 @@ export function dayKindNote(child: Child, date: IsoDate): string {
   if (day.reason === 'break') return `${day.label}なので家から`;
   return `${day.label}なので家から`;
 }
+
+const WEEKDAY_NAMES = ['日', '月', '火', '水', '木', '金', '土'];
+
+/** その日にデイが休みなら理由（「祝日は休み」「日曜定休」）、営業日なら null */
+export function facilityClosedReason(facility: Facility | undefined, date: IsoDate): string | null {
+  if (!facility) return null;
+  const weekday = weekdayIndex(date);
+  if (facility.closedWeekdays?.includes(weekday)) return `${WEEKDAY_NAMES[weekday]}曜定休`;
+  if (facility.openOnHolidays === false && holidayName(date)) return '祝日は休み';
+  return null;
+}
+
+/** お迎え・帰宅の時刻が営業時間の外なら、その説明 */
+export function outsideHoursWarning(
+  facility: Facility | undefined,
+  plan: Pick<PlanEntry, 'pickupFrom' | 'pickupTime' | 'returnTime'> & { pickupFrom: PickupFrom },
+): string | null {
+  const hours = facility?.hours?.[plan.pickupFrom];
+  if (!hours) return null;
+  const t = (x: string | null | undefined) => (x ? x.slice(0, 5) : null);
+  const pickup = t(plan.pickupTime);
+  const ret = t(plan.returnTime);
+  const open = t(hours.open);
+  const close = t(hours.close);
+  const range = `${open ?? ''}〜${close ?? ''}`;
+  if (open && pickup && pickup < open) return `お迎え ${pickup} が営業時間（${range}）より前です`;
+  if (close && ret && ret > close) return `帰宅 ${ret} が営業時間（${range}）より後です`;
+  return null;
+}

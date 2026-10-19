@@ -320,3 +320,6 @@ label.sublabel { font-weight: 400; font-size: 0.85rem; margin-top: 4px; }
 .day-note { font-size: 0.9rem; color: var(--muted); margin: 8px 0 0; }
 
 .plan-list li.facility-item { align-items: start; }
+input.needs-input { border: 2px solid var(--warn); background: var(--warn-soft); }
+.facility-times .weekdays label { font-size: 0.85rem; }
+.warn-text { color: var(--warn); }

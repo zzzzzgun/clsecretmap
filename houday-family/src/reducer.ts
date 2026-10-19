@@ -17,7 +17,7 @@ export type Action =
   | { type: 'addFacility'; id: string; name: string }
   | { type: 'renameFacility'; id: string; name: string }
   | { type: 'setFacilityArchived'; id: string; archived: boolean }
-  | { type: 'updateFacilityTimes'; id: string; times: Pick<Facility, 'weekdayReturn' | 'homePickup' | 'homeReturn'> }
+  | { type: 'updateFacilityTimes'; id: string; times: Pick<Facility, 'weekdayReturn' | 'homePickup' | 'homeReturn' | 'openOnHolidays' | 'closedWeekdays' | 'hours'> }
   | { type: 'addCertificate'; certificate: Certificate }
   | { type: 'removeCertificate'; id: string }
   | { type: 'addPlans'; plans: PlanEntry[] }

@@ -3,7 +3,15 @@ import { formatDateWithHoliday, holidayName, holidaysInMonth } from '@domain/hol
 import { certificateAlert, findDoubleBookings, monthlyAllowance } from '@domain/schedule';
 import { useState, type FormEvent } from 'react';
 import { FacilitySelect, field } from '../components';
-import { dayKindNote, defaultPlanTimes, planTimesText, type PlanTimes } from '../dayType';
+import {
+  dayKindNote,
+  defaultPlanTimes,
+  facilityClosedReason,
+  outsideHoursWarning,
+  pickupFromOf,
+  planTimesText,
+  type PlanTimes,
+} from '../dayType';
 import type { Child, PlanEntry } from '../model';
 import { newId, useStore } from '../store';
 import { PlanEditForm, TimesFields } from './PlanForms';
@@ -52,6 +60,8 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
   // 日付やデイを変えたら、その日のふだんどおりの時刻を入れ直す
   const currentTimes = addTimes ?? defaultPlanTimes(child, currentFacility, currentAddDate);
   const addDateHoliday = holidayName(currentAddDate);
+  const addClosed = facilityClosedReason(currentFacility, currentAddDate);
+  const addHoursWarning = outsideHoursWarning(currentFacility, currentTimes);
   const missingSchoolTimes = !child.dismissal || Object.keys(child.dismissal).length === 0;
   const leadingBlanks = (weekdayIndex(dates[0]) + 6) % 7;
 
@@ -95,8 +105,10 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
     const skipHolidays = form.get('skipHolidays') === 'yes';
     const candidates = dates.filter((d) => d >= today && weekdays.has(weekdayIndex(d)));
     const skipped = skipHolidays ? candidates.filter((d) => holidayName(d)) : [];
+    // デイが休みの日（祝日休み・定休日）は入れない
+    const closed = candidates.filter((d) => !skipped.includes(d) && facilityClosedReason(facility, d));
     const plans: PlanEntry[] = candidates
-      .filter((d) => !skipped.includes(d))
+      .filter((d) => !skipped.includes(d) && !closed.includes(d))
       // 時刻はその日の種類（学校から／家から）と、設定の下校時刻・デイのいつもの時刻から入れる
       .map((date) => ({
         id: newId(),
@@ -109,9 +121,15 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
       }));
     if (plans.length > 0) dispatch({ type: 'addPlans', plans });
     setWeeklyNotice(
-      skipped.length > 0
-        ? `${plans.length}日分を追加しました。祝日の ${skipped.map(formatDateWithHoliday).join('、')} は入れていません。必要なら「予定を追加」で1日ずつ入れてください。`
-        : `${plans.length}日分を追加しました。`,
+      [
+        `${plans.length}日分を追加しました。`,
+        skipped.length > 0 &&
+          `祝日の ${skipped.map(formatDateWithHoliday).join('、')} は入れていません。必要なら「予定を追加」で1日ずつ入れてください。`,
+        closed.length > 0 &&
+          `${facility?.name}が休みの ${closed.map((d) => `${formatDateWithHoliday(d)}（${facilityClosedReason(facility, d)}）`).join('、')} は入れていません。`,
+      ]
+        .filter(Boolean)
+        .join(''),
     );
     e.currentTarget.reset();
   }
@@ -270,7 +288,13 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
           value={currentTimes}
           onChange={setAddTimes}
         />
-        {addDateHoliday && (
+        {addClosed && (
+          <p className="notice danger">
+            {currentFacility?.name}はこの日は休みです（{addClosed}）。
+          </p>
+        )}
+        {addHoursWarning && <p className="notice warn">{addHoursWarning}。</p>}
+        {addDateHoliday && !addClosed && (
           <p className="notice warn">
             この日は祝日（{addDateHoliday}）です。デイの利用時間や送迎が普段と違うことがあるので、時刻を確かめてください。
           </p>
@@ -314,6 +338,10 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
           {monthPlans.map((p) => {
             const f = facilityById.get(p.facilityId);
             const times = planTimesText(child, p);
+            const warning =
+              p.status === 'planned'
+                ? facilityClosedReason(f, p.date) ?? outsideHoursWarning(f, { ...p, pickupFrom: pickupFromOf(child, p) })
+                : null;
             return (
               <li key={p.id} className={p.status === 'cancelled' ? 'cancelled' : undefined}>
                 <span className="what">
@@ -323,6 +351,7 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
                   {holidayName(p.date) && <span className="sub holiday-text">{holidayName(p.date)}</span>}
                   {times && <span className="sub">{times}</span>}
                   {p.note && <span className="sub">メモ: {p.note}</span>}
+                  {warning && <span className="sub warn-text">⚠ {warning}</span>}
                 </span>
                 <span className="actions">
                   <button

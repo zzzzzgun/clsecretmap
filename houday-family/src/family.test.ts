@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { weeklySchoolSchedule } from '@domain/schedule';
 import { describe, expect, it } from 'vitest';
 import { buildBackup, parseBackup } from './backup';
-import { dayKind, defaultPlanTimes, planTimesText } from './dayType';
+import { dayKind, defaultPlanTimes, facilityClosedReason, outsideHoursWarning, planTimesText } from './dayType';
 import { requestMessage, schoolWeekMessage } from './messages';
 import { emptyState, MAX_HISTORY, type AppState, type PlanEntry } from './model';
 import { reducer } from './reducer';
@@ -243,5 +243,24 @@ describe('学校から／家からの文面', () => {
     const text = schoolWeekMessage({ child, days });
     expect(text).toContain('12/24(木) ひまわりデイ（迎え 15:30）');
     expect(text).toContain('12/25(金) 冬休み・ひまわりデイ（家から）');
+  });
+});
+
+describe('デイの営業日・営業時間', () => {
+  const f = {
+    id: 'f1', name: 'ひまわりデイ', color: '#000', archived: false,
+    openOnHolidays: false, closedWeekdays: [0],
+    hours: { school: { open: '13:00', close: '18:00' }, home: { open: '09:00', close: '17:00' } },
+  };
+  it('祝日休み・定休日を判定する', () => {
+    expect(facilityClosedReason(f, '2026-11-03')).toBe('祝日は休み');
+    expect(facilityClosedReason(f, '2026-11-08')).toBe('日曜定休');
+    expect(facilityClosedReason(f, '2026-11-07')).toBeNull();
+    expect(facilityClosedReason({ ...f, openOnHolidays: undefined }, '2026-11-03')).toBeNull();
+  });
+  it('営業時間の外なら知らせる', () => {
+    expect(outsideHoursWarning(f, { pickupFrom: 'home', pickupTime: '08:30', returnTime: '16:00' })).toBe('お迎え 08:30 が営業時間（09:00〜17:00）より前です');
+    expect(outsideHoursWarning(f, { pickupFrom: 'school', pickupTime: '15:00', returnTime: '18:30' })).toBe('帰宅 18:30 が営業時間（13:00〜18:00）より後です');
+    expect(outsideHoursWarning(f, { pickupFrom: 'school', pickupTime: '15:00', returnTime: '17:30' })).toBeNull();
   });
 });

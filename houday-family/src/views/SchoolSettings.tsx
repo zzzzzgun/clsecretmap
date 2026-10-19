@@ -135,7 +135,7 @@ export function SchoolBreaksForm({ child }: { child: Child }) {
 /** デイごとの、いつものお迎え・帰宅の時刻 */
 export function FacilityTimesForm({ facility }: { facility: Facility }) {
   const { dispatch } = useStore();
-  const configured = facility.weekdayReturn || facility.homePickup || facility.homeReturn;
+  const configured = facility.weekdayReturn || facility.homePickup || facility.homeReturn || facility.hours;
 
   function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -147,6 +147,12 @@ export function FacilityTimesForm({ facility }: { facility: Facility }) {
         weekdayReturn: field(form, 'weekdayReturn') || null,
         homePickup: field(form, 'homePickup') || null,
         homeReturn: field(form, 'homeReturn') || null,
+        openOnHolidays: form.get('openOnHolidays') !== 'no',
+        closedWeekdays: form.getAll('closedWeekday').map(Number),
+        hours: {
+          school: { open: field(form, 'schoolOpen') || null, close: field(form, 'schoolClose') || null },
+          home: { open: field(form, 'homeOpen') || null, close: field(form, 'homeClose') || null },
+        },
       },
     });
     (e.currentTarget.closest('details') as HTMLDetailsElement | null)?.removeAttribute('open');
@@ -155,7 +161,10 @@ export function FacilityTimesForm({ facility }: { facility: Facility }) {
   return (
     <details className="facility-times">
       <summary className="muted">
-        いつもの時刻{configured ? '' : '（未設定）'}
+        時刻・営業日{configured ? '' : '（未設定）'}
+        {facility.openOnHolidays === false && '　祝日休み'}
+        {facility.closedWeekdays && facility.closedWeekdays.length > 0 &&
+          `　定休 ${facility.closedWeekdays.map((d) => '日月火水木金土'[d]).join('・')}`}
         {facility.weekdayReturn && `　平日 帰宅 ${facility.weekdayReturn}`}
         {(facility.homePickup || facility.homeReturn) &&
           `　休日 ${facility.homePickup ? `迎え ${facility.homePickup}` : ''}${facility.homeReturn ? ` 帰宅 ${facility.homeReturn}` : ''}`}
@@ -185,6 +194,53 @@ export function FacilityTimesForm({ facility }: { facility: Facility }) {
             </label>
             <input id={`hr-${facility.id}`} name="homeReturn" type="time" defaultValue={facility.homeReturn ?? ''} />
           </div>
+        </div>
+        <label>営業時間（平日）</label>
+        <div className="row">
+          <div>
+            <label className="sublabel">開始</label>
+            <input aria-label="平日の開始" name="schoolOpen" type="time" defaultValue={facility.hours?.school?.open ?? ''} />
+          </div>
+          <div>
+            <label className="sublabel">終了</label>
+            <input aria-label="平日の終了" name="schoolClose" type="time" defaultValue={facility.hours?.school?.close ?? ''} />
+          </div>
+        </div>
+        <label>営業時間（土日・祝日・学校が休みの日）</label>
+        <div className="row">
+          <div>
+            <label className="sublabel">開始</label>
+            <input aria-label="休日の開始" name="homeOpen" type="time" defaultValue={facility.hours?.home?.open ?? ''} />
+          </div>
+          <div>
+            <label className="sublabel">終了</label>
+            <input aria-label="休日の終了" name="homeClose" type="time" defaultValue={facility.hours?.home?.close ?? ''} />
+          </div>
+        </div>
+        <label>祝日</label>
+        <div className="row">
+          <label className="inline">
+            <input type="radio" name="openOnHolidays" value="yes" defaultChecked={facility.openOnHolidays !== false} />
+            営業している
+          </label>
+          <label className="inline">
+            <input type="radio" name="openOnHolidays" value="no" defaultChecked={facility.openOnHolidays === false} />
+            休み
+          </label>
+        </div>
+        <label>定休日</label>
+        <div className="weekdays">
+          {['月', '火', '水', '木', '金', '土', '日'].map((label, i) => (
+            <label key={label}>
+              <input
+                type="checkbox"
+                name="closedWeekday"
+                value={(i + 1) % 7}
+                defaultChecked={facility.closedWeekdays?.includes((i + 1) % 7)}
+              />
+              {label}
+            </label>
+          ))}
         </div>
         <div className="actions">
           <button type="submit">保存</button>
