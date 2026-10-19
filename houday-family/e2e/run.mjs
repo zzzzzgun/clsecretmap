@@ -83,6 +83,19 @@ await page.fill('#cert-days', '10');
 await page.click('text=受給者証を登録');
 ok(await page.isVisible('text=2026-04-01 〜 2026-12-10・月10日'), '受給者証を登録できる');
 
+// 学校の時間（下校時刻・曜日ごとの授業時間）と、デイのいつもの時刻
+await page.fill('input[name="dismissal-5"]', '14:00');
+await page.fill('input[name="dismissal-6"]', '15:00');
+await page.selectOption('select[name="periods-2"]', '6');
+await page.selectOption('select[name="periods-4"]', '6');
+await page.click('form:has(input[name="dismissal-6"]) button[type=submit]');
+await page.locator('li:has-text("ひまわりデイ") summary').click();
+await page.locator('li:has-text("ひまわりデイ") input[name="weekdayReturn"]').fill('17:30');
+await page.locator('li:has-text("ひまわりデイ") input[name="homePickup"]').fill('09:30');
+await page.locator('li:has-text("ひまわりデイ") input[name="homeReturn"]').fill('16:00');
+await page.locator('li:has-text("ひまわりデイ") form button[type=submit]').click();
+ok(await page.isVisible('text=平日 帰宅 17:30'), 'デイのいつもの時刻を登録できる');
+
 // カレンダー: 11月の火・木をまとめて入れる
 await page.click('.tabbar >> text=カレンダー');
 ok(await page.isVisible('text=受給者証の有効期限（2026-12-10）まであと53日'), '受給者証の期限が近いと知らせる');
@@ -91,7 +104,6 @@ await page.click('summary:has-text("曜日でまとめて追加")');
 await page.selectOption('#weekly-facility', { label: 'ひまわりデイ' });
 await page.check('.weekdays label:has-text("火") input');
 await page.check('.weekdays label:has-text("木") input');
-await page.fill('#weekly-pickup', '15:00');
 await page.click('text=まとめて追加 >> nth=-1');
 ok(await page.isVisible('text=利用 7日 / 支給 10日（残り3日）'), '曜日でまとめて7日入り（祝日の11/3は除く）、残り日数が出る');
 ok(await page.isVisible('text=祝日の 11/3(火・祝) は入れていません'), 'まとめて追加で祝日を飛ばしたことを知らせる');
@@ -99,11 +111,32 @@ ok(await page.isVisible('.calendar .day.holiday:has-text("祝")'), 'カレンダ
 ok(await page.isVisible('text=この月の祝日：11/3(火・祝) 文化の日、11/23(月・祝) 勤労感謝の日'), 'その月の祝日の一覧が出る');
 
 // 同じ日にさくらデイを入れる → 重複の警告
+// 土曜日を選ぶと「家から」、平日を選ぶと「学校から」と下校時刻が自動で入る
+await page.fill('#plan-date', '2026-11-07');
+ok(
+  (await page.locator('.segmented label.on').textContent()) === '家から' && (await page.inputValue('#plan-pickup')) === '09:30',
+  '土曜日は家からのお迎えになり、デイのいつもの時刻が入る',
+);
+await page.fill('#plan-date', '2026-11-12');
+ok(
+  (await page.locator('.segmented label.on').textContent()) === '学校から' &&
+    (await page.inputValue('#plan-pickup')) === '15:00' &&
+    (await page.inputValue('#plan-return')) === '17:30',
+  '平日は学校からになり、曜日の授業時間の下校時刻が入る',
+);
 await page.fill('#plan-date', '2026-11-05');
 await page.selectOption('#plan-facility', { label: 'さくらデイ' });
 await page.click('form:has(#plan-date) button[type=submit]');
 ok(await page.isVisible('text=同じ日に2か所のデイが入っています'), '同じ日に2か所入れると警告が出る');
 ok(await page.isVisible('text=利用 7日 / 支給 10日（残り3日）'), '同じ日の2か所目は利用日数に重ねて数えない');
+ok(await page.isVisible('text=学校お迎え 15:00（6時間）・帰宅 17:30'), 'まとめて追加でも下校時刻と帰宅時刻が入る');
+
+// 短縮授業の日だけ授業時間を変える
+const nov10 = page.locator('.plan-list li:has-text("11/10(火)")');
+await nov10.locator('button:has-text("時刻")').click();
+await nov10.locator('select').selectOption('5');
+await nov10.locator('form button[type=submit]').click();
+ok(await nov10.locator('text=学校お迎え 14:00（5時間）・帰宅 17:30').isVisible(), '1日だけ授業時間を変えると下校時刻が変わる');
 await page.screenshot({ path: `${OUT}02-calendar.png`, fullPage: true });
 
 // サポートブック: 保存と履歴
@@ -129,7 +162,7 @@ await page.screenshot({ path: `${OUT}04-log.png`, fullPage: true });
 await page.click('.tabbar >> text=連絡');
 const requests = await page.locator('.message-preview').allTextContents();
 const himawari = requests.find((t) => t.startsWith('ひまわりデイ'));
-ok(Boolean(himawari?.includes('・11/5(木) 迎え 15:00') && himawari?.includes('計7日') && !himawari?.includes('11/3')), 'デイへの希望日の文面に11月の7日分が入る');
+ok(Boolean(himawari?.includes('・11/5(木) 学校お迎え 15:00（6時間）・帰宅 17:30') && himawari?.includes('計7日') && !himawari?.includes('11/3')), 'デイへの希望日の文面に11月の7日分が入る');
 await page.screenshot({ path: `${OUT}05-messages.png`, fullPage: true });
 ok(await page.isVisible('strong:has-text("（来週）")'), '週末に開くと来週の予定が出る');
 await page.click('[aria-label="次の週"]');

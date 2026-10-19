@@ -1,9 +1,8 @@
 import { addDays, addMonths, mondayOf, monthOf, todayInTokyo, weekdayIndex } from '@domain/dates';
-import { formatDateWithHoliday, holidayName } from '@domain/holidays';
-import { shortTime, weeklySchoolSchedule } from '@domain/schedule';
+import { weeklySchoolSchedule } from '@domain/schedule';
 import { useState } from 'react';
 import { CopyButton } from '../components';
-import { requestMessage, schoolWeekMessage } from '../messages';
+import { requestMessage, schoolDayLine, schoolWeekMessage } from '../messages';
 import type { Child } from '../model';
 import { useStore } from '../store';
 
@@ -26,7 +25,7 @@ export function MessagesView({ child }: { child: Child }) {
 
   const plans = state.plans.filter((p) => p.childId === child.id);
   const days = weeklySchoolSchedule(plans, state.facilities, weekStart, 5);
-  const schoolText = schoolWeekMessage({ childName: child.name, days });
+  const schoolText = schoolWeekMessage({ child, days });
 
   const activeFacilities = state.facilities.filter((f) => !f.archived);
 
@@ -50,17 +49,14 @@ export function MessagesView({ child }: { child: Child }) {
         <table className="week-table">
           <tbody>
             {days.map((d) => {
-              const holiday = holidayName(d.date);
-              const visits = d.visits
-                .map((v) => `${v.facilityName}${v.pickupTime ? `（迎え ${shortTime(v.pickupTime)}）` : ''}`)
-                .join('、');
+              const line = schoolDayLine(child, d);
               return (
-                <tr key={d.date} className={holiday ? 'holiday' : undefined}>
-                  <th>{formatDateWithHoliday(d.date)}</th>
+                <tr key={d.date} className={line.noSchool ? 'holiday' : undefined}>
+                  <th>{line.dateLabel}</th>
                   <td>
-                    {holiday && <strong>{holiday}</strong>}
-                    {holiday && visits && <br />}
-                    {visits || (!holiday && 'デイなし')}
+                    {line.noSchool && <strong>{line.noSchool}</strong>}
+                    {line.noSchool && line.visits && <br />}
+                    {line.visits || (!line.noSchool && 'デイなし')}
                   </td>
                 </tr>
               );
@@ -92,7 +88,7 @@ export function MessagesView({ child }: { child: Child }) {
         </div>
         {activeFacilities.map((f) => {
           const text = requestMessage({
-            childName: child.name,
+            child,
             facilityName: f.name,
             month: requestMonth,
             plans: plans.filter((p) => p.facilityId === f.id),

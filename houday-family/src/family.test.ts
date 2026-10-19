@@ -2,10 +2,13 @@ import 'fake-indexeddb/auto';
 import { weeklySchoolSchedule } from '@domain/schedule';
 import { describe, expect, it } from 'vitest';
 import { buildBackup, parseBackup } from './backup';
+import { dayKind, defaultPlanTimes, planTimesText } from './dayType';
 import { requestMessage, schoolWeekMessage } from './messages';
 import { emptyState, MAX_HISTORY, type AppState, type PlanEntry } from './model';
 import { reducer } from './reducer';
 import { allPhotoIds, deletePhoto, getPhoto, loadState, putPhoto, saveState } from './storage';
+
+const TARO = { id: 'c1', name: 'たろう', school: '', grade: '' };
 
 function plan(date: string, extra: Partial<PlanEntry> = {}): PlanEntry {
   return {
@@ -83,7 +86,7 @@ describe('データの更新', () => {
 describe('文面の作成', () => {
   it('デイへの利用希望日の文面に、その月の予定だけを日付順で入れる', () => {
     const text = requestMessage({
-      childName: 'たろう',
+      child: TARO,
       facilityName: 'ひまわりデイ',
       month: '2026-11',
       plans: [
@@ -94,7 +97,7 @@ describe('文面の作成', () => {
       ],
     });
     expect(text).toContain('たろうの11月の利用希望日');
-    expect(text).toContain('・11/4(水)\n・11/6(金) 迎え 15:00');
+    expect(text).toContain('・11/4(水) 学校お迎え\n・11/6(金) 学校お迎え 15:00');
     expect(text).not.toContain('11/5');
     expect(text).not.toContain('12/1');
     expect(text).toContain('計2日です');
@@ -106,7 +109,7 @@ describe('文面の作成', () => {
       [{ id: 'f1', name: 'ひまわりデイ' }],
       '2026-10-19',
     );
-    const text = schoolWeekMessage({ childName: 'たろう', days });
+    const text = schoolWeekMessage({ child: TARO, days });
     expect(text).toContain('10/19(月) ひまわりデイ（迎え 14:45）');
     expect(text).toContain('10/20(火) デイなし');
     expect(text).not.toContain('(土)');
@@ -149,12 +152,12 @@ describe('端末への保存', () => {
 describe('祝日の反映', () => {
   it('デイへの希望日の文面では祝日に「祝」が付く', () => {
     const text = requestMessage({
-      childName: 'たろう',
+      child: TARO,
       facilityName: 'ひまわりデイ',
       month: '2026-10',
       plans: [plan('2026-10-12', { pickupTime: '09:30' }), plan('2026-10-13')],
     });
-    expect(text).toContain('・10/12(月・祝) 迎え 09:30\n・10/13(火)');
+    expect(text).toContain('・10/12(月・祝) 自宅お迎え 09:30\n・10/13(火) 学校お迎え');
   });
 
   it('学校向けの文面では祝日の名前を出し、デイに行くならその予定を添える', () => {
@@ -164,9 +167,81 @@ describe('祝日の反映', () => {
       '2026-09-21',
       5,
     );
-    const text = schoolWeekMessage({ childName: 'たろう', days });
-    expect(text).toContain('9/21(月・祝) 敬老の日・ひまわりデイ（迎え 09:30）');
+    const text = schoolWeekMessage({ child: TARO, days });
+    expect(text).toContain('9/21(月・祝) 敬老の日・ひまわりデイ（家から）');
     expect(text).toContain('9/22(火・祝) 国民の休日');
     expect(text).toContain('9/24(木) デイなし');
+  });
+});
+
+describe('平日と土日・祝日の違い', () => {
+  const child = {
+    id: 'c1',
+    name: 'たろう',
+    school: '',
+    grade: '',
+    dismissal: { '5': '14:40', '6': '15:30' },
+    weeklyPeriods: { '1': 6, '2': 5, '3': 5, '4': 6, '5': 5 },
+    schoolBreaks: [{ id: 'b1', label: '冬休み', from: '2026-12-25', until: '2027-01-07' }],
+  };
+  const facility = { id: 'f1', name: 'ひまわりデイ', color: '#000', archived: false, weekdayReturn: '17:30', homePickup: '09:30', homeReturn: '16:00' };
+
+  it('平日は学校から。曜日の授業時間から下校時刻が入る', () => {
+    expect(defaultPlanTimes(child, facility, '2026-11-02')).toEqual({ pickupFrom: 'school', periods: 6, pickupTime: '15:30', returnTime: '17:30' });
+    expect(defaultPlanTimes(child, facility, '2026-11-04')).toEqual({ pickupFrom: 'school', periods: 5, pickupTime: '14:40', returnTime: '17:30' });
+  });
+
+  it('土日・祝日・学校が休みの期間は家から', () => {
+    const home = { pickupFrom: 'home', periods: null, pickupTime: '09:30', returnTime: '16:00' };
+    expect(defaultPlanTimes(child, facility, '2026-11-07')).toEqual(home);
+    expect(defaultPlanTimes(child, facility, '2026-11-03')).toEqual(home);
+    expect(defaultPlanTimes(child, facility, '2026-12-25')).toEqual(home);
+    expect(dayKind(child, '2026-12-25')).toEqual({ kind: 'home', reason: 'break', label: '冬休み' });
+  });
+
+  it('下校時刻やデイの時刻が未登録なら空のまま', () => {
+    const bare = { id: 'c2', name: 'はなこ', school: '', grade: '' };
+    expect(defaultPlanTimes(bare, undefined, '2026-11-02')).toEqual({ pickupFrom: 'school', periods: null, pickupTime: null, returnTime: null });
+  });
+
+  it('お迎えの説明文', () => {
+    expect(planTimesText(child, { date: '2026-11-02', pickupFrom: 'school', periods: 6, pickupTime: '15:30', returnTime: '17:30:00' })).toBe(
+      '学校お迎え 15:30（6時間）・帰宅 17:30',
+    );
+    expect(planTimesText(child, { date: '2026-11-07', pickupTime: '09:30', returnTime: null })).toBe('自宅お迎え 09:30');
+  });
+});
+
+describe('学校から／家からの文面', () => {
+  const child = {
+    ...TARO,
+    dismissal: { '6': '15:30' },
+    schoolBreaks: [{ id: 'b1', label: '冬休み', from: '2026-12-25', until: '2027-01-07' }],
+  };
+
+  it('デイへの文面に、学校お迎え（授業時間）と自宅お迎えを書き分ける', () => {
+    const text = requestMessage({
+      child,
+      facilityName: 'ひまわりデイ',
+      month: '2026-12',
+      plans: [
+        plan('2026-12-21', { pickupFrom: 'school', periods: 6, pickupTime: '15:30', returnTime: '17:30' }),
+        plan('2026-12-26', { pickupFrom: 'home', pickupTime: '09:30', returnTime: '16:00' }),
+      ],
+    });
+    expect(text).toContain('・12/21(月) 学校お迎え 15:30（6時間）・帰宅 17:30');
+    expect(text).toContain('・12/26(土) 自宅お迎え 09:30・帰宅 16:00');
+  });
+
+  it('学校向けの文面では、学校が休みの期間は理由を書き、お迎え時刻は書かない', () => {
+    const days = weeklySchoolSchedule(
+      [plan('2026-12-25', { pickupFrom: 'home', pickupTime: '09:30' }), plan('2026-12-24', { pickupTime: '15:30' })],
+      [{ id: 'f1', name: 'ひまわりデイ' }],
+      '2026-12-21',
+      5,
+    );
+    const text = schoolWeekMessage({ child, days });
+    expect(text).toContain('12/24(木) ひまわりデイ（迎え 15:30）');
+    expect(text).toContain('12/25(金) 冬休み・ひまわりデイ（家から）');
   });
 });

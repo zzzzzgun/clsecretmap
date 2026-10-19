@@ -299,3 +299,24 @@ form > .actions { margin-top: 16px; }
 .holiday-list { font-size: 0.85rem; color: var(--danger); margin: 8px 0 0; }
 .holiday-text { color: var(--danger); }
 .week-table tr.holiday th, .week-table tr.holiday td { color: var(--danger); }
+
+/* 学校の時間・デイの時刻の設定 */
+.period-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+.period-cell { display: flex; flex-direction: column; gap: 2px; margin: 0; font-weight: 400; font-size: 0.85rem; }
+.weekday-periods { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.weekday-periods label { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 0; font-weight: 400; }
+.weekday-periods select { padding: 8px 4px; text-align: center; }
+.facility-times { margin-top: 4px; }
+.facility-times summary { font-size: 0.85rem; }
+label.sublabel { font-weight: 400; font-size: 0.85rem; margin-top: 4px; }
+.plan-edit { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border); }
+
+/* 学校から／家から の切り替え */
+.segmented { display: flex; gap: 0; border: 1px solid var(--accent); border-radius: 8px; overflow: hidden; width: fit-content; }
+.segmented label { margin: 0; padding: 8px 16px; font-weight: 600; color: var(--accent); cursor: pointer; }
+.segmented label.on { background: var(--accent); color: #fff; }
+.segmented input { position: absolute; opacity: 0; pointer-events: none; }
+.plan-list li > .plan-edit { grid-column: 1 / -1; }
+.day-note { font-size: 0.9rem; color: var(--muted); margin: 8px 0 0; }
+
+.plan-list li.facility-item { align-items: start; }

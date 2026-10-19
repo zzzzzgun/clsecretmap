@@ -1,10 +1,12 @@
 import { addMonths, datesInMonth, monthOf, todayInTokyo, weekdayIndex } from '@domain/dates';
 import { formatDateWithHoliday, holidayName, holidaysInMonth } from '@domain/holidays';
-import { certificateAlert, findDoubleBookings, monthlyAllowance, shortTime } from '@domain/schedule';
+import { certificateAlert, findDoubleBookings, monthlyAllowance } from '@domain/schedule';
 import { useState, type FormEvent } from 'react';
 import { FacilitySelect, field } from '../components';
+import { dayKindNote, defaultPlanTimes, planTimesText, type PlanTimes } from '../dayType';
 import type { Child, PlanEntry } from '../model';
 import { newId, useStore } from '../store';
+import { PlanEditForm, TimesFields } from './PlanForms';
 
 const WEEKDAY_HEADERS = ['月', '火', '水', '木', '金', '土', '日'];
 
@@ -17,12 +19,17 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
   const today = todayInTokyo();
   const [month, setMonth] = useState(monthOf(today));
   const defaultAddDate = month === monthOf(today) ? today : `${month}-01`;
+  const activeFacilities = state.facilities.filter((f) => !f.archived);
   const [addDate, setAddDate] = useState<string | null>(null);
+  const [addFacilityId, setAddFacilityId] = useState<string | null>(null);
+  const [addTimes, setAddTimes] = useState<PlanTimes | null>(null);
   const [weeklyNotice, setWeeklyNotice] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   function changeMonth(delta: number) {
     setMonth(addMonths(month, delta));
     setAddDate(null);
+    setAddTimes(null);
     setWeeklyNotice(null);
   }
 
@@ -39,7 +46,13 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
 
   const dates = datesInMonth(month);
   const holidays = holidaysInMonth(month);
-  const addDateHoliday = holidayName(addDate ?? defaultAddDate);
+  const currentAddDate = addDate ?? defaultAddDate;
+  const currentFacilityId = addFacilityId && activeFacilities.some((f) => f.id === addFacilityId) ? addFacilityId : activeFacilities[0]?.id ?? '';
+  const currentFacility = state.facilities.find((f) => f.id === currentFacilityId);
+  // 日付やデイを変えたら、その日のふだんどおりの時刻を入れ直す
+  const currentTimes = addTimes ?? defaultPlanTimes(child, currentFacility, currentAddDate);
+  const addDateHoliday = holidayName(currentAddDate);
+  const missingSchoolTimes = !child.dismissal || Object.keys(child.dismissal).length === 0;
   const leadingBlanks = (weekdayIndex(dates[0]) + 6) % 7;
 
   if (state.facilities.length === 0) {
@@ -59,10 +72,9 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
         {
           id: newId(),
           childId: child.id,
-          facilityId: field(form, 'facilityId'),
-          date: field(form, 'date'),
-          pickupTime: field(form, 'pickupTime') || null,
-          returnTime: field(form, 'returnTime') || null,
+          facilityId: currentFacilityId,
+          date: currentAddDate,
+          ...currentTimes,
           status: 'planned',
           note: field(form, 'note'),
         },
@@ -70,6 +82,7 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
     });
     e.currentTarget.reset();
     setAddDate(null);
+    setAddTimes(null);
   }
 
   function addWeekly(e: FormEvent<HTMLFormElement>) {
@@ -77,21 +90,20 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
     const form = new FormData(e.currentTarget);
     const weekdays = new Set(form.getAll('weekday').map(Number));
     const facilityId = field(form, 'facilityId');
-    const pickupTime = field(form, 'pickupTime') || null;
-    const returnTime = field(form, 'returnTime') || null;
+    const facility = state.facilities.find((f) => f.id === facilityId);
     // 祝日はデイの利用時間や送迎が変わることが多いので、初期設定では入れない
     const skipHolidays = form.get('skipHolidays') === 'yes';
     const candidates = dates.filter((d) => d >= today && weekdays.has(weekdayIndex(d)));
     const skipped = skipHolidays ? candidates.filter((d) => holidayName(d)) : [];
     const plans: PlanEntry[] = candidates
       .filter((d) => !skipped.includes(d))
+      // 時刻はその日の種類（学校から／家から）と、設定の下校時刻・デイのいつもの時刻から入れる
       .map((date) => ({
         id: newId(),
         childId: child.id,
         facilityId,
         date,
-        pickupTime,
-        returnTime,
+        ...defaultPlanTimes(child, facility, date),
         status: 'planned',
         note: '',
       }));
@@ -208,6 +220,11 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
       </p>
 
       <h2>予定を追加</h2>
+      {missingSchoolTimes && (
+        <p className="notice info">
+          <button className="link" onClick={() => goTo('settings')}>設定</button>で下校時刻とデイのいつもの時刻を入れておくと、お迎え・帰宅の時刻が自動で入ります。
+        </p>
+      )}
       <form onSubmit={addOne} className="card">
         <div className="row">
           <div>
@@ -219,24 +236,40 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
               required
               key={defaultAddDate}
               defaultValue={defaultAddDate}
-              onChange={(e) => setAddDate(e.target.value)}
+              onChange={(e) => {
+                if (!e.target.value) return;
+                setAddDate(e.target.value);
+                setAddTimes(null);
+              }}
             />
           </div>
           <div>
             <label htmlFor="plan-facility">デイ</label>
-            <FacilitySelect id="plan-facility" />
+            <select
+              id="plan-facility"
+              value={currentFacilityId}
+              onChange={(e) => {
+                setAddFacilityId(e.target.value);
+                setAddTimes(null);
+              }}
+            >
+              {activeFacilities.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
-        <div className="row">
-          <div>
-            <label htmlFor="plan-pickup">お迎え（学校など）</label>
-            <input id="plan-pickup" name="pickupTime" type="time" />
-          </div>
-          <div>
-            <label htmlFor="plan-return">帰宅</label>
-            <input id="plan-return" name="returnTime" type="time" />
-          </div>
-        </div>
+        <p className={addDateHoliday ? 'day-note holiday-text' : 'day-note'}>{dayKindNote(child, currentAddDate)}</p>
+        <TimesFields
+          idPrefix="plan"
+          child={child}
+          facilityId={currentFacilityId}
+          date={currentAddDate}
+          value={currentTimes}
+          onChange={setAddTimes}
+        />
         {addDateHoliday && (
           <p className="notice warn">
             この日は祝日（{addDateHoliday}）です。デイの利用時間や送迎が普段と違うことがあるので、時刻を確かめてください。
@@ -261,16 +294,9 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
               </label>
             ))}
           </div>
-          <div className="row">
-            <div>
-              <label htmlFor="weekly-pickup">お迎え</label>
-              <input id="weekly-pickup" name="pickupTime" type="time" />
-            </div>
-            <div>
-              <label htmlFor="weekly-return">帰宅</label>
-              <input id="weekly-return" name="returnTime" type="time" />
-            </div>
-          </div>
+          <p className="muted">
+            お迎え・帰宅の時刻は、平日は下校時刻（曜日ごとの授業時間）、土日・祝日・学校が休みの期間は「家から」の時刻で自動で入ります。違う日は、下の一覧の「時刻」で直せます。
+          </p>
           <label className="inline">
             <input type="checkbox" name="skipHolidays" value="yes" defaultChecked />
             <span>祝日には入れない（祝日は利用時間や送迎が変わることが多いため）</span>
@@ -287,12 +313,7 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
         <ul className="plan-list">
           {monthPlans.map((p) => {
             const f = facilityById.get(p.facilityId);
-            const times = [
-              shortTime(p.pickupTime) && `迎え ${shortTime(p.pickupTime)}`,
-              shortTime(p.returnTime) && `帰宅 ${shortTime(p.returnTime)}`,
-            ]
-              .filter(Boolean)
-              .join('・');
+            const times = planTimesText(child, p);
             return (
               <li key={p.id} className={p.status === 'cancelled' ? 'cancelled' : undefined}>
                 <span className="what">
@@ -312,10 +333,16 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
                   >
                     {p.status === 'planned' ? 'お休み' : '戻す'}
                   </button>
+                  {p.status === 'planned' && (
+                    <button className="small secondary" onClick={() => setEditingId(editingId === p.id ? null : p.id)}>
+                      時刻
+                    </button>
+                  )}
                   <button className="small danger" onClick={() => dispatch({ type: 'removePlan', id: p.id })}>
                     削除
                   </button>
                 </span>
+                {editingId === p.id && <PlanEditForm child={child} plan={p} onDone={() => setEditingId(null)} />}
               </li>
             );
           })}

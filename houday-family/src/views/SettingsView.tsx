@@ -4,6 +4,7 @@ import { field, formatDateTime } from '../components';
 import type { Child } from '../model';
 import { allPhotoIds, clearPhotos, getPhoto, putPhoto } from '../storage';
 import { newId, useStore } from '../store';
+import { FacilityTimesForm, SchoolBreaksForm, SchoolTimesForm } from './SchoolSettings';
 
 export function SettingsView({ child, onSelectChild }: { child: Child; onSelectChild: (id: string) => void }) {
   const { state, dispatch } = useStore();
@@ -67,11 +68,12 @@ export function SettingsView({ child, onSelectChild }: { child: Child; onSelectC
         {state.facilities.length === 0 && <p className="muted">まだ登録されていません。</p>}
         <ul className="plan-list">
           {state.facilities.map((f) => (
-            <li key={f.id} className={f.archived ? 'cancelled' : undefined}>
+            <li key={f.id} className={f.archived ? 'facility-item cancelled' : 'facility-item'}>
               <span className="what">
                 <span className="swatch" style={{ background: f.color }} />
                 {f.name}
                 {f.archived && '（通っていない）'}
+                {!f.archived && <FacilityTimesForm facility={f} />}
               </span>
               <button
                 className="small secondary"
@@ -122,6 +124,12 @@ export function SettingsView({ child, onSelectChild }: { child: Child; onSelectC
           <button type="submit">受給者証を登録</button>
         </form>
       </div>
+
+      <h2>{child.name}さんの学校の時間</h2>
+      <SchoolTimesForm child={child} />
+
+      <h2>学校が休みの期間</h2>
+      <SchoolBreaksForm child={child} />
 
       <h2>お子さん</h2>
       <form key={child.id} onSubmit={saveChild} className="card">

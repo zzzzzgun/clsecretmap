@@ -7,11 +7,24 @@ import type { SupportBookSection } from '@domain/support-book';
 
 export const SCHEMA_VERSION = 1;
 
+/** 学校が休みの期間（夏休みなど）。平日でも家からデイに行く */
+export interface SchoolBreak {
+  id: string;
+  label: string;
+  from: IsoDate;
+  until: IsoDate;
+}
+
 export interface Child {
   id: string;
   name: string;
   school: string;
   grade: string;
+  /** 授業の時間数ごとの下校時刻。例: { '5': '14:40', '6': '15:30' } */
+  dismissal?: Partial<Record<string, string>>;
+  /** 曜日（1=月〜5=金）ごとの、ふだんの授業の時間数 */
+  weeklyPeriods?: Partial<Record<string, number>>;
+  schoolBreaks?: SchoolBreak[];
 }
 
 export interface Facility {
@@ -19,6 +32,11 @@ export interface Facility {
   name: string;
   color: string;
   archived: boolean;
+  /** 学校からデイに行った日の、ふだんの帰宅時刻 */
+  weekdayReturn?: string | null;
+  /** 土日・祝日・学校が休みの日の、家へのお迎え時刻と帰宅時刻 */
+  homePickup?: string | null;
+  homeReturn?: string | null;
 }
 
 export interface Certificate {
@@ -38,7 +56,13 @@ export interface PlanEntry {
   returnTime: string | null;
   status: PlanStatus;
   note: string;
+  /** どこから迎えに来てもらうか（古いデータにはない） */
+  pickupFrom?: PickupFrom;
+  /** 学校から行く日の授業の時間数 */
+  periods?: number | null;
 }
+
+export type PickupFrom = 'school' | 'home';
 
 export interface SupportBookRevision {
   body: string;
@@ -86,6 +110,9 @@ export function emptyState(): AppState {
     lastBackupAt: null,
   };
 }
+
+/** 下校時刻を登録できる授業の時間数 */
+export const PERIOD_OPTIONS = [3, 4, 5, 6, 7] as const;
 
 export const FACILITY_COLORS = ['#2f6fde', '#e0782b', '#2a9d6a', '#b04fc4', '#c9483f', '#7a6a2f'];
 

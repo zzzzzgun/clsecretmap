@@ -6,6 +6,7 @@ import {
   type Certificate,
   type Child,
   type DayLog,
+  type Facility,
   type PlanEntry,
 } from './model';
 
@@ -16,10 +17,12 @@ export type Action =
   | { type: 'addFacility'; id: string; name: string }
   | { type: 'renameFacility'; id: string; name: string }
   | { type: 'setFacilityArchived'; id: string; archived: boolean }
+  | { type: 'updateFacilityTimes'; id: string; times: Pick<Facility, 'weekdayReturn' | 'homePickup' | 'homeReturn'> }
   | { type: 'addCertificate'; certificate: Certificate }
   | { type: 'removeCertificate'; id: string }
   | { type: 'addPlans'; plans: PlanEntry[] }
   | { type: 'setPlanStatus'; id: string; status: PlanEntry['status'] }
+  | { type: 'updatePlanTimes'; id: string; times: Pick<PlanEntry, 'pickupFrom' | 'periods' | 'pickupTime' | 'returnTime'> }
   | { type: 'removePlan'; id: string }
   | { type: 'saveSupportBook'; childId: string; section: SupportBookSection; body: string; now: string }
   | { type: 'addLog'; log: DayLog }
@@ -73,6 +76,12 @@ export function reducer(state: AppState, action: Action): AppState {
         facilities: state.facilities.map((f) => (f.id === action.id ? { ...f, archived: action.archived } : f)),
       };
 
+    case 'updateFacilityTimes':
+      return {
+        ...state,
+        facilities: state.facilities.map((f) => (f.id === action.id ? { ...f, ...action.times } : f)),
+      };
+
     case 'addCertificate':
       return { ...state, certificates: [...state.certificates, action.certificate] };
 
@@ -84,6 +93,9 @@ export function reducer(state: AppState, action: Action): AppState {
 
     case 'setPlanStatus':
       return { ...state, plans: state.plans.map((p) => (p.id === action.id ? { ...p, status: action.status } : p)) };
+
+    case 'updatePlanTimes':
+      return { ...state, plans: state.plans.map((p) => (p.id === action.id ? { ...p, ...action.times } : p)) };
 
     case 'removePlan':
       return { ...state, plans: state.plans.filter((p) => p.id !== action.id) };

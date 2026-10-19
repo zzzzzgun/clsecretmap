@@ -71,7 +71,8 @@ export function parseBackup(text: string): BackupFile {
       isDate(p.date) &&
       isTimeOrNull(p.pickupTime) &&
       isTimeOrNull(p.returnTime) &&
-      (p.status === 'planned' || p.status === 'cancelled'),
+      (p.status === 'planned' || p.status === 'cancelled') &&
+      (p.pickupFrom === undefined || p.pickupFrom === 'school' || p.pickupFrom === 'home'),
     '予定',
   );
   everyItem(
