@@ -48,6 +48,7 @@ function png(w, h) {
 }
 
 // 手元に Playwright のブラウザがない場合は npx playwright install chromium
+const openDay = (label) => page.click(`.calendar button.day[aria-label^="${label}"]`);
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 const context = await browser.newContext({
   viewport: { width: 390, height: 844 },
@@ -142,21 +143,27 @@ await page.fill('#plan-date', '2026-11-19');
 await page.selectOption('#plan-periods', '');
 await page.fill('#plan-pickup', '13:10');
 await page.click('form:has(#plan-date) button[type=submit]');
-ok(await page.isVisible('text=学校お迎え 13:10・帰宅 17:30'), '授業時間「その他」では下校時刻を自分で入れられる');
-await page.locator('.plan-list li:has-text("11/19(木)") button:has-text("削除")').first().click();
+await openDay('11/19(木)');
+ok(await page.isVisible('.modal >> text=学校お迎え 13:10・帰宅 17:30'), '授業時間「その他」では下校時刻を自分で入れられる');
+await page.locator('.modal li:has-text("11/19(木)") button:has-text("削除")').first().click();
+await page.keyboard.press('Escape');
 await page.fill('#plan-date', '2026-11-05');
 await page.selectOption('#plan-facility', { label: 'さくらデイ' });
 await page.click('form:has(#plan-date) button[type=submit]');
 ok(await page.isVisible('text=同じ日に2か所のデイが入っています'), '同じ日に2か所入れると警告が出る');
 ok(await page.isVisible('text=利用 7日 / 支給 10日（残り3日）'), '同じ日の2か所目は利用日数に重ねて数えない');
-ok(await page.isVisible('text=学校お迎え 15:00（6時間）・帰宅 17:30'), 'まとめて追加でも下校時刻と帰宅時刻が入る');
+await openDay('11/5(木)');
+ok(await page.isVisible('.modal >> text=学校お迎え 15:00（6時間）・帰宅 17:30'), 'まとめて追加でも下校時刻と帰宅時刻が入る');
+await page.keyboard.press('Escape');
 
 // 短縮授業の日だけ授業時間を変える
-const nov10 = page.locator('.plan-list li:has-text("11/10(火)")');
+await openDay('11/10(火)');
+const nov10 = page.locator('.modal li:has-text("11/10(火)")');
 await nov10.locator('button:has-text("時刻")').click();
 await nov10.locator('select').selectOption('5');
 await nov10.locator('form button[type=submit]').click();
 ok(await nov10.locator('text=学校お迎え 14:00（5時間）・帰宅 17:30').isVisible(), '1日だけ授業時間を変えると下校時刻が変わる');
+await page.keyboard.press('Escape');
 await page.screenshot({ path: `${OUT}02-calendar.png`, fullPage: true });
 
 // サポートブック: 保存と履歴
@@ -232,9 +239,9 @@ await page.fill('#plan-date', '2026-11-06');
 await page.click('form:has(#plan-date) button[type=submit]');
 await page.click('.view-toggle label:has-text("全員")');
 ok(await page.isVisible('.calendar .chip:has-text("はさ")') && await page.isVisible('.calendar .chip:has-text("たひ")'), '全員表示では、きょうだいの予定が1つのカレンダーに出る');
-ok(await page.isVisible('.plan-list .who:has-text("はなこさん")'), '全員表示の予定一覧に子どもの名前が出る');
 await page.click('.calendar button.day:has(.chip:has-text("はさ"))');
 ok(await page.isVisible('.modal[role=dialog] .plan-list li'), '日付をタップするとその日の予定がモーダルで出る');
+ok(await page.isVisible('.modal .who:has-text("はなこさん")'), '全員表示のモーダルに子どもの名前が出る');
 await page.waitForTimeout(400);
 await page.screenshot({ path: 'e2e/output/modal.png' });
 await page.keyboard.press('Escape');

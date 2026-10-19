@@ -410,7 +410,7 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
             ))}
           </div>
           <p className="muted">
-            お迎え・帰宅の時刻は、平日は下校時刻（曜日ごとの授業時間）、土日・祝日・学校が休みの期間は「家から」の時刻で自動で入ります。違う日は、下の一覧の「時刻」で直せます。
+            お迎え・帰宅の時刻は、平日は下校時刻（曜日ごとの授業時間）、土日・祝日・学校が休みの期間は「家から」の時刻で自動で入ります。違う日は、カレンダーの日付をタップして「時刻」で直せます。
           </p>
           <label className="inline">
             <input type="checkbox" name="skipHolidays" value="yes" defaultChecked />
@@ -421,14 +421,6 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
           {weeklyNotice && <p className="notice info">{weeklyNotice}</p>}
         </form>
       </details>
-
-      <h2>この月の予定</h2>
-      <div className="card">
-        {monthPlans.length === 0 && <p className="muted">まだ予定がありません。</p>}
-        <ul className="plan-list">
-          {monthPlans.map(renderPlanItem)}
-        </ul>
-      </div>
 
       {openDate && (
         <DayModal
