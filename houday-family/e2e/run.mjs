@@ -114,6 +114,7 @@ await page.check('.weekdays label:has-text("木") input');
 await page.click('text=まとめて追加 >> nth=-1');
 ok(await page.isVisible('text=利用 7日 / 支給 10日（残り3日）'), '曜日でまとめて7日入り（祝日の11/3は除く）、残り日数が出る');
 ok(await page.isVisible('text=祝日の 11/3(火・祝) は入れていません'), 'まとめて追加で祝日を飛ばしたことを知らせる');
+ok(await page.isVisible('.toast:has-text("予定を7件追加しました")'), '追加したことが画面下のメッセージで分かる');
 ok(await page.isVisible('.calendar .day.holiday:has-text("祝")'), 'カレンダーで祝日が分かる');
 ok(await page.isVisible('text=この月の祝日：11/3(火・祝) 文化の日、11/23(月・祝) 勤労感謝の日'), 'その月の祝日の一覧が出る');
 
