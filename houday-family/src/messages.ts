@@ -1,4 +1,5 @@
-import { formatJapaneseDate, monthOf, weekdayIndex, type IsoMonth } from '@domain/dates';
+import { monthOf, weekdayIndex, type IsoMonth } from '@domain/dates';
+import { formatDateWithHoliday, holidayName } from '@domain/holidays';
 import { shortTime, type SchoolDay } from '@domain/schedule';
 import type { PlanEntry } from './model';
 
@@ -28,7 +29,7 @@ export function requestMessage(args: {
 
   const lines = dates.map((p) => {
     const times = timesText(p);
-    return `・${formatJapaneseDate(p.date)}${times ? ` ${times}` : ''}`;
+    return `・${formatDateWithHoliday(p.date)}${times ? ` ${times}` : ''}`;
   });
 
   return [
@@ -46,9 +47,13 @@ export function requestMessage(args: {
 export function schoolWeekMessage(args: { childName: string; days: readonly SchoolDay[]; skipWeekends?: boolean }): string {
   const days = args.skipWeekends === false ? args.days : args.days.filter((d) => !isWeekend(d.date));
   const lines = days.map((d) => {
-    if (d.visits.length === 0) return `${formatJapaneseDate(d.date)} デイなし`;
+    const label = formatDateWithHoliday(d.date);
+    const holiday = holidayName(d.date);
     const visits = d.visits.map((v) => `${v.facilityName}${v.pickupTime ? `（迎え ${shortTime(v.pickupTime)}）` : ''}`);
-    return `${formatJapaneseDate(d.date)} ${visits.join('、')}`;
+    // 祝日は学校が休みなので、学校からの迎えはない。デイに行く場合だけ書き添える
+    if (holiday) return `${label} ${[holiday, ...visits].join('・')}`;
+    if (visits.length === 0) return `${label} デイなし`;
+    return `${label} ${visits.join('、')}`;
   });
   return [`${args.childName}のデイの予定です。`, '', ...lines, '', 'よろしくお願いいたします。'].join('\n');
 }

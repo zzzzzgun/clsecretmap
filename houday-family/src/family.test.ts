@@ -145,3 +145,28 @@ describe('端末への保存', () => {
     expect(await allPhotoIds()).toEqual([]);
   });
 });
+
+describe('祝日の反映', () => {
+  it('デイへの希望日の文面では祝日に「祝」が付く', () => {
+    const text = requestMessage({
+      childName: 'たろう',
+      facilityName: 'ひまわりデイ',
+      month: '2026-10',
+      plans: [plan('2026-10-12', { pickupTime: '09:30' }), plan('2026-10-13')],
+    });
+    expect(text).toContain('・10/12(月・祝) 迎え 09:30\n・10/13(火)');
+  });
+
+  it('学校向けの文面では祝日の名前を出し、デイに行くならその予定を添える', () => {
+    const days = weeklySchoolSchedule(
+      [plan('2026-09-21', { pickupTime: '09:30:00' })],
+      [{ id: 'f1', name: 'ひまわりデイ' }],
+      '2026-09-21',
+      5,
+    );
+    const text = schoolWeekMessage({ childName: 'たろう', days });
+    expect(text).toContain('9/21(月・祝) 敬老の日・ひまわりデイ（迎え 09:30）');
+    expect(text).toContain('9/22(火・祝) 国民の休日');
+    expect(text).toContain('9/24(木) デイなし');
+  });
+});

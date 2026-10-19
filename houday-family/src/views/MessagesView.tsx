@@ -1,4 +1,5 @@
-import { addDays, addMonths, formatJapaneseDate, mondayOf, monthOf, todayInTokyo, weekdayIndex } from '@domain/dates';
+import { addDays, addMonths, mondayOf, monthOf, todayInTokyo, weekdayIndex } from '@domain/dates';
+import { formatDateWithHoliday, holidayName } from '@domain/holidays';
 import { shortTime, weeklySchoolSchedule } from '@domain/schedule';
 import { useState } from 'react';
 import { CopyButton } from '../components';
@@ -48,16 +49,22 @@ export function MessagesView({ child }: { child: Child }) {
         </div>
         <table className="week-table">
           <tbody>
-            {days.map((d) => (
-              <tr key={d.date}>
-                <th>{formatJapaneseDate(d.date)}</th>
-                <td>
-                  {d.visits.length === 0
-                    ? 'デイなし'
-                    : d.visits.map((v) => `${v.facilityName}${v.pickupTime ? `（迎え ${shortTime(v.pickupTime)}）` : ''}`).join('、')}
-                </td>
-              </tr>
-            ))}
+            {days.map((d) => {
+              const holiday = holidayName(d.date);
+              const visits = d.visits
+                .map((v) => `${v.facilityName}${v.pickupTime ? `（迎え ${shortTime(v.pickupTime)}）` : ''}`)
+                .join('、');
+              return (
+                <tr key={d.date} className={holiday ? 'holiday' : undefined}>
+                  <th>{formatDateWithHoliday(d.date)}</th>
+                  <td>
+                    {holiday && <strong>{holiday}</strong>}
+                    {holiday && visits && <br />}
+                    {visits || (!holiday && 'デイなし')}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
         <p className="muted no-print">連絡帳に貼るなら印刷、担任の先生に送るならコピーしてください。</p>

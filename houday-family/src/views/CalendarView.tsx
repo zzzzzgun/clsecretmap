@@ -1,11 +1,5 @@
-import {
-  addMonths,
-  datesInMonth,
-  formatJapaneseDate,
-  monthOf,
-  todayInTokyo,
-  weekdayIndex,
-} from '@domain/dates';
+import { addMonths, datesInMonth, monthOf, todayInTokyo, weekdayIndex } from '@domain/dates';
+import { formatDateWithHoliday, holidayName, holidaysInMonth } from '@domain/holidays';
 import { certificateAlert, findDoubleBookings, monthlyAllowance, shortTime } from '@domain/schedule';
 import { useState, type FormEvent } from 'react';
 import { FacilitySelect, field } from '../components';
@@ -22,6 +16,15 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
   const { state, dispatch } = useStore();
   const today = todayInTokyo();
   const [month, setMonth] = useState(monthOf(today));
+  const defaultAddDate = month === monthOf(today) ? today : `${month}-01`;
+  const [addDate, setAddDate] = useState<string | null>(null);
+  const [weeklyNotice, setWeeklyNotice] = useState<string | null>(null);
+
+  function changeMonth(delta: number) {
+    setMonth(addMonths(month, delta));
+    setAddDate(null);
+    setWeeklyNotice(null);
+  }
 
   const facilityById = new Map(state.facilities.map((f) => [f.id, f]));
   const childPlans = state.plans.filter((p) => p.childId === child.id);
@@ -35,6 +38,8 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
   const certAlert = certificateAlert(certificates, today);
 
   const dates = datesInMonth(month);
+  const holidays = holidaysInMonth(month);
+  const addDateHoliday = holidayName(addDate ?? defaultAddDate);
   const leadingBlanks = (weekdayIndex(dates[0]) + 6) % 7;
 
   if (state.facilities.length === 0) {
@@ -64,6 +69,7 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
       ],
     });
     e.currentTarget.reset();
+    setAddDate(null);
   }
 
   function addWeekly(e: FormEvent<HTMLFormElement>) {
@@ -73,8 +79,12 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
     const facilityId = field(form, 'facilityId');
     const pickupTime = field(form, 'pickupTime') || null;
     const returnTime = field(form, 'returnTime') || null;
-    const plans: PlanEntry[] = dates
-      .filter((d) => d >= today && weekdays.has(weekdayIndex(d)))
+    // 祝日はデイの利用時間や送迎が変わることが多いので、初期設定では入れない
+    const skipHolidays = form.get('skipHolidays') === 'yes';
+    const candidates = dates.filter((d) => d >= today && weekdays.has(weekdayIndex(d)));
+    const skipped = skipHolidays ? candidates.filter((d) => holidayName(d)) : [];
+    const plans: PlanEntry[] = candidates
+      .filter((d) => !skipped.includes(d))
       .map((date) => ({
         id: newId(),
         childId: child.id,
@@ -86,6 +96,11 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
         note: '',
       }));
     if (plans.length > 0) dispatch({ type: 'addPlans', plans });
+    setWeeklyNotice(
+      skipped.length > 0
+        ? `${plans.length}日分を追加しました。祝日の ${skipped.map(formatDateWithHoliday).join('、')} は入れていません。必要なら「予定を追加」で1日ずつ入れてください。`
+        : `${plans.length}日分を追加しました。`,
+    );
     e.currentTarget.reset();
   }
 
@@ -111,7 +126,7 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
           <ul>
             {[...doubleBookings.entries()].map(([date, ids]) => (
               <li key={date}>
-                {formatJapaneseDate(date)}: {ids.map((id) => facilityById.get(id)?.name).join('、')}
+                {formatDateWithHoliday(date)}: {ids.map((id) => facilityById.get(id)?.name).join('、')}
               </li>
             ))}
           </ul>
@@ -119,11 +134,11 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
       )}
 
       <div className="month-nav">
-        <button className="small secondary" aria-label="前の月" onClick={() => setMonth(addMonths(month, -1))}>
+        <button className="small secondary" aria-label="前の月" onClick={() => changeMonth(-1)}>
           ← 前
         </button>
         <strong>{monthTitle(month)}</strong>
-        <button className="small secondary" aria-label="次の月" onClick={() => setMonth(addMonths(month, 1))}>
+        <button className="small secondary" aria-label="次の月" onClick={() => changeMonth(1)}>
           次 →
         </button>
       </div>
@@ -145,10 +160,20 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
           <div key={`blank-${i}`} />
         ))}
         {dates.map((date) => {
-          const classes = ['day', date === today && 'today', doubleBookings.has(date) && 'conflict'].filter(Boolean);
+          const holiday = holidayName(date);
+          const weekday = weekdayIndex(date);
+          const classes = [
+            'day',
+            holiday && 'holiday',
+            weekday === 0 && 'sunday',
+            weekday === 6 && 'saturday',
+            date === today && 'today',
+            doubleBookings.has(date) && 'conflict',
+          ].filter(Boolean);
           return (
-            <div key={date} className={classes.join(' ')}>
+            <div key={date} className={classes.join(' ')} title={holiday ?? undefined}>
               <span className="num">{Number(date.slice(8))}</span>
+              {holiday && <span className="holiday-mark">祝</span>}
               {monthPlans
                 .filter((p) => p.date === date && p.status === 'planned')
                 .map((p) => {
@@ -164,6 +189,12 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
           );
         })}
       </div>
+
+      {holidays.length > 0 && (
+        <p className="holiday-list">
+          この月の祝日：{holidays.map((h) => `${formatDateWithHoliday(h.date)} ${h.name}`).join('、')}
+        </p>
+      )}
 
       <p className="legend">
         {state.facilities
@@ -181,7 +212,15 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
         <div className="row">
           <div>
             <label htmlFor="plan-date">日付</label>
-            <input id="plan-date" name="date" type="date" required defaultValue={month === monthOf(today) ? today : `${month}-01`} />
+            <input
+              id="plan-date"
+              name="date"
+              type="date"
+              required
+              key={defaultAddDate}
+              defaultValue={defaultAddDate}
+              onChange={(e) => setAddDate(e.target.value)}
+            />
           </div>
           <div>
             <label htmlFor="plan-facility">デイ</label>
@@ -198,6 +237,11 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
             <input id="plan-return" name="returnTime" type="time" />
           </div>
         </div>
+        {addDateHoliday && (
+          <p className="notice warn">
+            この日は祝日（{addDateHoliday}）です。デイの利用時間や送迎が普段と違うことがあるので、時刻を確かめてください。
+          </p>
+        )}
         <label htmlFor="plan-note">メモ</label>
         <input id="plan-note" name="note" type="text" maxLength={200} />
         <button type="submit">追加</button>
@@ -227,8 +271,13 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
               <input id="weekly-return" name="returnTime" type="time" />
             </div>
           </div>
+          <label className="inline">
+            <input type="checkbox" name="skipHolidays" value="yes" defaultChecked />
+            <span>祝日には入れない（祝日は利用時間や送迎が変わることが多いため）</span>
+          </label>
           <p className="muted">今日より前の日には追加しません。</p>
           <button type="submit">まとめて追加</button>
+          {weeklyNotice && <p className="notice info">{weeklyNotice}</p>}
         </form>
       </details>
 
@@ -248,7 +297,9 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
               <li key={p.id} className={p.status === 'cancelled' ? 'cancelled' : undefined}>
                 <span className="what">
                   <span className="swatch" style={{ background: f?.color }} />
-                  <strong>{formatJapaneseDate(p.date)}</strong> {f?.name}
+                  <strong className={holidayName(p.date) ? 'holiday-text' : undefined}>{formatDateWithHoliday(p.date)}</strong>{' '}
+                  {f?.name}
+                  {holidayName(p.date) && <span className="sub holiday-text">{holidayName(p.date)}</span>}
                   {times && <span className="sub">{times}</span>}
                   {p.note && <span className="sub">メモ: {p.note}</span>}
                 </span>

@@ -283,3 +283,19 @@ label.inline input[type='checkbox'] { width: 20px; height: 20px; flex: 0 0 auto;
 main > button,
 main > .actions { margin-bottom: 16px; }
 form > .actions { margin-top: 16px; }
+
+/* 祝日・土日 */
+.calendar .day.sunday .num,
+.calendar .day.holiday .num { color: var(--danger); }
+.calendar .day.saturday .num { color: var(--accent); }
+.calendar .day.holiday { background: var(--danger-soft); }
+.calendar .holiday-mark {
+  float: right;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--danger);
+  line-height: 1.6;
+}
+.holiday-list { font-size: 0.85rem; color: var(--danger); margin: 8px 0 0; }
+.holiday-text { color: var(--danger); }
+.week-table tr.holiday th, .week-table tr.holiday td { color: var(--danger); }
