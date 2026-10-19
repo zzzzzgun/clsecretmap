@@ -1,7 +1,7 @@
 import { addMonths, datesInMonth, monthOf, todayInTokyo, weekdayIndex } from '@domain/dates';
 import { formatDateWithHoliday, holidayName, holidaysInMonth } from '@domain/holidays';
 import { certificateAlert, findDoubleBookings, monthlyAllowance } from '@domain/schedule';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { FacilitySelect, field } from '../components';
 import {
   dayKindNote,
@@ -37,6 +37,8 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
   const [addTimes, setAddTimes] = useState<PlanTimes | null>(null);
   const [weeklyNotice, setWeeklyNotice] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [openDate, setOpenDate] = useState<string | null>(null);
+  const addFormRef = useRef<HTMLFormElement>(null);
 
   function changeMonth(delta: number) {
     setMonth(addMonths(month, delta));
@@ -151,6 +153,49 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
     e.currentTarget.reset();
   }
 
+  function renderPlanItem(p: PlanEntry) {
+  const f = facilityById.get(p.facilityId);
+  const planChild = childById.get(p.childId) ?? child;
+  const times = planTimesText(planChild, p);
+  const warning =
+    p.status === 'planned'
+      ? facilityClosedReason(f, p.date) ?? outsideHoursWarning(f, { ...p, pickupFrom: pickupFromOf(planChild, p) })
+      : null;
+  return (
+    <li key={p.id} className={p.status === 'cancelled' ? 'cancelled' : undefined}>
+      <span className="what">
+        <span className="swatch" style={{ background: f?.color }} />
+        <strong className={holidayName(p.date) ? 'holiday-text' : undefined}>{formatDateWithHoliday(p.date)}</strong>{' '}
+        {showAll && <span className="who">{planChild.name}さん</span>}
+        {f?.name}
+        {holidayName(p.date) && <span className="sub holiday-text">{holidayName(p.date)}</span>}
+        {times && <span className="sub">{times}</span>}
+        {p.note && <span className="sub">メモ: {p.note}</span>}
+        {warning && <span className="sub warn-text">⚠ {warning}</span>}
+      </span>
+      <span className="actions">
+        <button
+          className="small secondary"
+          onClick={() =>
+            dispatch({ type: 'setPlanStatus', id: p.id, status: p.status === 'planned' ? 'cancelled' : 'planned' })
+          }
+        >
+          {p.status === 'planned' ? 'お休み' : '戻す'}
+        </button>
+        {p.status === 'planned' && (
+          <button className="small secondary" onClick={() => setEditingId(editingId === p.id ? null : p.id)}>
+            時刻
+          </button>
+        )}
+        <button className="small danger" onClick={() => dispatch({ type: 'removePlan', id: p.id })}>
+          削除
+        </button>
+      </span>
+      {editingId === p.id && <PlanEditForm child={planChild} plan={p} onDone={() => setEditingId(null)} />}
+    </li>
+  );
+  }
+
   return (
     <>
       {certAlert?.kind === 'missing' && (
@@ -237,7 +282,14 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
             conflictDates.has(date) && 'conflict',
           ].filter(Boolean);
           return (
-            <div key={date} className={classes.join(' ')} title={holiday ?? undefined}>
+            <button
+              type="button"
+              key={date}
+              className={classes.join(' ')}
+              title={holiday ?? undefined}
+              aria-label={`${formatDateWithHoliday(date)}の予定を見る`}
+              onClick={() => setOpenDate(date)}
+            >
               <span className="num">{Number(date.slice(8))}</span>
               {holiday && <span className="holiday-mark">祝</span>}
               {monthPlans
@@ -254,7 +306,7 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
                     </span>
                   );
                 })}
-            </div>
+            </button>
           );
         })}
       </div>
@@ -282,7 +334,7 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
           <button className="link" onClick={() => goTo('settings')}>設定</button>で下校時刻とデイのいつもの時刻を入れておくと、お迎え・帰宅の時刻が自動で入ります。
         </p>
       )}
-      <form onSubmit={addOne} className="card">
+      <form onSubmit={addOne} className="card" ref={addFormRef}>
         <div className="row">
           <div>
             <label htmlFor="plan-date">日付</label>
@@ -374,50 +426,78 @@ export function CalendarView({ child, goTo }: { child: Child; goTo: (tab: 'setti
       <div className="card">
         {monthPlans.length === 0 && <p className="muted">まだ予定がありません。</p>}
         <ul className="plan-list">
-          {monthPlans.map((p) => {
-            const f = facilityById.get(p.facilityId);
-            const planChild = childById.get(p.childId) ?? child;
-            const times = planTimesText(planChild, p);
-            const warning =
-              p.status === 'planned'
-                ? facilityClosedReason(f, p.date) ?? outsideHoursWarning(f, { ...p, pickupFrom: pickupFromOf(planChild, p) })
-                : null;
-            return (
-              <li key={p.id} className={p.status === 'cancelled' ? 'cancelled' : undefined}>
-                <span className="what">
-                  <span className="swatch" style={{ background: f?.color }} />
-                  <strong className={holidayName(p.date) ? 'holiday-text' : undefined}>{formatDateWithHoliday(p.date)}</strong>{' '}
-                  {showAll && <span className="who">{planChild.name}さん</span>}
-                  {f?.name}
-                  {holidayName(p.date) && <span className="sub holiday-text">{holidayName(p.date)}</span>}
-                  {times && <span className="sub">{times}</span>}
-                  {p.note && <span className="sub">メモ: {p.note}</span>}
-                  {warning && <span className="sub warn-text">⚠ {warning}</span>}
-                </span>
-                <span className="actions">
-                  <button
-                    className="small secondary"
-                    onClick={() =>
-                      dispatch({ type: 'setPlanStatus', id: p.id, status: p.status === 'planned' ? 'cancelled' : 'planned' })
-                    }
-                  >
-                    {p.status === 'planned' ? 'お休み' : '戻す'}
-                  </button>
-                  {p.status === 'planned' && (
-                    <button className="small secondary" onClick={() => setEditingId(editingId === p.id ? null : p.id)}>
-                      時刻
-                    </button>
-                  )}
-                  <button className="small danger" onClick={() => dispatch({ type: 'removePlan', id: p.id })}>
-                    削除
-                  </button>
-                </span>
-                {editingId === p.id && <PlanEditForm child={planChild} plan={p} onDone={() => setEditingId(null)} />}
-              </li>
-            );
-          })}
+          {monthPlans.map(renderPlanItem)}
         </ul>
       </div>
+
+      {openDate && (
+        <DayModal
+          date={openDate}
+          title={`${formatDateWithHoliday(openDate)}${holidayName(openDate) ? ` ${holidayName(openDate)}` : ''}`}
+          note={dayKindNote(child, openDate)}
+          onClose={() => setOpenDate(null)}
+          onAdd={() => {
+            setAddDate(openDate);
+            setAddTimes(null);
+            setOpenDate(null);
+            setTimeout(() => addFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+          }}
+          addLabel={`この日に予定を追加${state.children.length > 1 ? `（${child.name}さん）` : ''}`}
+        >
+          {monthPlans.filter((p) => p.date === openDate).length === 0 ? (
+            <p className="muted">この日の予定はありません。</p>
+          ) : (
+            <ul className="plan-list">{monthPlans.filter((p) => p.date === openDate).map(renderPlanItem)}</ul>
+          )}
+        </DayModal>
+      )}
     </>
+  );
+}
+
+function DayModal({
+  title,
+  note,
+  addLabel,
+  onClose,
+  onAdd,
+  children,
+}: {
+  date: string;
+  title: string;
+  note: string;
+  addLabel: string;
+  onClose: () => void;
+  onAdd: () => void;
+  children: React.ReactNode;
+}) {
+  // Esc キーで閉じる・後ろの画面がスクロールしないようにする
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    document.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [onClose]);
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <strong>{title}</strong>
+          <button type="button" className="small secondary" onClick={onClose} aria-label="閉じる">
+            ✕
+          </button>
+        </div>
+        <p className="day-note">{note}</p>
+        {children}
+        <button type="button" onClick={onAdd}>
+          {addLabel}
+        </button>
+      </div>
+    </div>
   );
 }

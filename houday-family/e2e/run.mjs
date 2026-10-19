@@ -233,6 +233,15 @@ await page.click('form:has(#plan-date) button[type=submit]');
 await page.click('.view-toggle label:has-text("全員")');
 ok(await page.isVisible('.calendar .chip:has-text("はさ")') && await page.isVisible('.calendar .chip:has-text("たひ")'), '全員表示では、きょうだいの予定が1つのカレンダーに出る');
 ok(await page.isVisible('.plan-list .who:has-text("はなこさん")'), '全員表示の予定一覧に子どもの名前が出る');
+await page.click('.calendar button.day:has(.chip:has-text("はさ"))');
+ok(await page.isVisible('.modal[role=dialog] .plan-list li'), '日付をタップするとその日の予定がモーダルで出る');
+await page.waitForTimeout(400);
+await page.screenshot({ path: 'e2e/output/modal.png' });
+await page.keyboard.press('Escape');
+ok(!(await page.isVisible('.modal')), 'Escでモーダルが閉じる');
+await page.click('.calendar button.day >> nth=20');
+await page.click('.modal >> text=この日に予定を追加');
+ok(!(await page.isVisible('.modal')) && (await page.inputValue('#plan-date')) !== '', '「この日に予定を追加」で追加フォームに日付が入る');
 
 ok(errors.length === 0, `ブラウザのエラーなし ${errors.join(' | ')}`);
 console.log(results.join('\n'));

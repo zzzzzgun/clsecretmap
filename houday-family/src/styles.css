@@ -353,3 +353,31 @@ input.needs-input { border: 2px solid var(--warn); background: var(--warn-soft);
 .who { display: inline-block; font-size: 0.8rem; font-weight: 700; background: var(--accent-soft); border-radius: 4px; padding: 0 6px; margin-right: 4px; }
 .facility-children { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 0.85rem; margin-top: 4px; align-items: center; }
 .facility-children label.inline { margin: 0; }
+
+/* カレンダーのマスはボタン（タップでその日の予定） */
+.calendar button.day { font: inherit; text-align: left; color: var(--text); cursor: pointer; margin: 0; display: block; width: 100%; }
+.calendar button.day:active { filter: brightness(0.95); }
+
+/* その日の予定のモーダル（スマホでは下から出る） */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 30;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.modal {
+  background: var(--surface);
+  width: 100%;
+  max-width: 720px;
+  max-height: 85vh;
+  overflow-y: auto;
+  border-radius: 16px 16px 0 0;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+  animation: modal-up 0.2s ease-out;
+}
+.modal-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 1.1rem; }
+@keyframes modal-up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (min-width: 720px) { .modal-backdrop { align-items: center; } .modal { border-radius: 16px; } }
