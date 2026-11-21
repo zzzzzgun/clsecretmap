@@ -29,12 +29,12 @@ page.on('pageerror', (e) => errors.push(e.message));
 try {
   // 1. 起動時はレシピ一覧
   await page.goto(URL_);
-  ok(await visible(page.getByRole('heading', { name: 'わが家のレシピ' })), '起動時は一覧画面');
+  ok(await visible(page.getByRole('heading', { name: 'えまたくおしんひろのレシピ' })), '起動時は一覧画面');
   ok(await visible(page.getByText('まだレシピがありません')), '最初は空の案内が出る');
   await shot('01-empty');
 
   // 2. 新しいレシピを登録
-  await page.getByRole('link', { name: '＋ 新しいレシピ' }).click();
+  await page.getByRole('link', { name: '新しいレシピ' }).click();
   await page.getByRole('button', { name: '登録する' }).click();
   ok(await visible(page.getByText('料理名を入れてください')), '料理名が空だと登録できない');
 
@@ -154,7 +154,7 @@ try {
   await page.getByRole('link', { name: '← 一覧へ' }).click();
 
   // もう1件（材料検索の確認用）
-  await page.getByRole('link', { name: '＋ 新しいレシピ' }).click();
+  await page.getByRole('link', { name: '新しいレシピ' }).click();
   await page.getByLabel('料理名').fill('大根サラダ');
   await page.getByRole('button', { name: '＋ 材料を選ぶ' }).click();
   await page.getByRole('dialog').getByRole('button', { name: '大根', exact: true }).click();
@@ -210,7 +210,7 @@ try {
   ok(await visible(page.getByRole('heading', { name: '大根サラダ' })), 'キャンセルすると消えない');
   await page.getByRole('button', { name: 'このレシピを削除' }).click();
   await page.getByRole('dialog').getByRole('button', { name: '削除する' }).click();
-  ok(await visible(page.getByRole('heading', { name: 'わが家のレシピ' })), '削除すると一覧へ戻る');
+  ok(await visible(page.getByRole('heading', { name: 'えまたくおしんひろのレシピ' })), '削除すると一覧へ戻る');
   ok(JSON.stringify(await cards()) === JSON.stringify(['具だくさん豚汁']), '削除したレシピは一覧から消える');
   await page.reload();
   ok((await cards()).length === 1, '再読み込みしても削除されたまま');

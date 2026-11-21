@@ -215,3 +215,47 @@ export function ItemPicker({
     </Modal>
   );
 }
+
+/** アプリのアイコン（public/icon.svg と同じ絵） */
+export function AppIcon({ size = 44 }: { size?: number }) {
+  return (
+    <svg className="app-icon" width={size} height={size} viewBox="0 0 512 512" aria-hidden="true">
+      <rect width="512" height="512" rx="112" fill="#c8582a" />
+      <path d="M120 250h272c0 75-61 136-136 136s-136-61-136-136z" fill="#fff" />
+      <rect x="96" y="232" width="320" height="26" rx="13" fill="#fff" />
+      <path
+        d="M200 196c-14-18 14-34 0-56M256 196c-14-18 14-34 0-56M312 196c-14-18 14-34 0-56"
+        stroke="#fde3d3"
+        strokeWidth="16"
+        strokeLinecap="round"
+        fill="none"
+      />
+    </svg>
+  );
+}
+
+const LOGO_NAMES = [
+  { text: 'えま', className: 'n-ema' },
+  { text: 'たく', className: 'n-taku' },
+  { text: 'おしん', className: 'n-oshin' },
+  { text: 'ひろ', className: 'n-hiro' },
+];
+
+/** 一覧の上のロゴ：アイコン＋「えまたくおしんひろ」＋「のレシピ」 */
+export function Logo() {
+  return (
+    <h1 className="logo" aria-label="えまたくおしんひろのレシピ">
+      <AppIcon />
+      <span className="logo-text" aria-hidden="true">
+        <span className="logo-names">
+          {LOGO_NAMES.map((n) => (
+            <span key={n.text} className={n.className}>
+              {n.text}
+            </span>
+          ))}
+        </span>
+        <span className="logo-sub">のレシピ</span>
+      </span>
+    </h1>
+  );
+}
