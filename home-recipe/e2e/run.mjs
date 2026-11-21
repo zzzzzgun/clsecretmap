@@ -225,6 +225,17 @@ try {
   await page.getByRole('link', { name: '肉じゃが' }).click();
   await shot('09-dark-detail');
 
+  // ホーム画面用のアイコン
+  {
+    const href = await page.locator('link[rel="apple-touch-icon"]').getAttribute('href');
+    const res = await page.request.get(new URL(href, page.url()).href);
+    ok(res.ok() && res.headers()['content-type'] === 'image/png', `iPhone のホーム画面アイコンが PNG（${href}）`);
+    const manifest = await (await page.request.get(new URL('manifest.webmanifest', URL_).href)).json();
+    const pngs = manifest.icons.filter((i) => i.type === 'image/png');
+    let allOk = pngs.length >= 3;
+    for (const i of pngs) allOk &&= (await page.request.get(new URL(i.src, URL_).href)).ok();
+    ok(allOk, `マニフェストの PNG アイコンが取得できる（${pngs.map((i) => i.src).join(', ')}）`);
+  }
   ok(errors.length === 0, `ページのエラーなし ${errors.join(' / ')}`);
 } catch (e) {
   ok(false, `途中で止まった: ${e.message}`);

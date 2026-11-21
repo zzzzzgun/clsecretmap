@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "e2e": "node e2e/run.mjs",
-    "publish": "npm run build && rm -rf ../recipe-note && cp -r dist ../recipe-note && cp PUBLISHED.md ../recipe-note/README.md && touch ../.nojekyll"
+    "publish": "npm run build && rm -rf ../recipe-note && cp -r dist ../recipe-note && cp PUBLISHED.md ../recipe-note/README.md && touch ../.nojekyll",
+    "icons": "node scripts/make-icons.mjs"
   },
   "dependencies": {
     "react": "^19.3.1",
