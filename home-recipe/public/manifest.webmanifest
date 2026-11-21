@@ -1,0 +1,12 @@
+{
+  "name": "わが家のレシピ",
+  "short_name": "わが家のレシピ",
+  "description": "家で作った料理のレシピを、この端末の中に記録するノート",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f8f5ef",
+  "theme_color": "#c8582a",
+  "lang": "ja",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
