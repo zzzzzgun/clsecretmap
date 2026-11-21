@@ -25,6 +25,10 @@
   --r-ema-soft: #fbe5ef;
   --r-taku: #1d7a83;
   --r-taku-soft: #dff3f4;
+  --n-ema: #c2457d;
+  --n-taku: #1d7a83;
+  --n-oshin: #c8582a;
+  --n-hiro: #3a72c4;
   --radius: 14px;
   color-scheme: light;
 }
@@ -57,6 +61,10 @@
     --r-ema-soft: #3d2030;
     --r-taku: #6fd3db;
     --r-taku-soft: #17363a;
+    --n-ema: #f39ac2;
+    --n-taku: #6fd3db;
+    --n-oshin: #f08a5d;
+    --n-hiro: #8fb6f2;
     color-scheme: dark;
   }
 }
@@ -167,6 +175,28 @@ input:disabled { opacity: 0.5; }
 /* ---- list ---- */
 .list-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 8px 0 12px; }
 .list-head h1 { margin: 0; }
+
+/* ---- ロゴ ---- */
+.logo { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.app-icon { flex: 0 0 auto; border-radius: 22%; box-shadow: 0 2px 6px rgb(200 88 42 / 30%); }
+.logo-text {
+  display: flex; flex-direction: column; min-width: 0;
+  font-family: 'Zen Maru Gothic', 'Hiragino Maru Gothic ProN', 'Arial Rounded MT Bold', system-ui, sans-serif;
+  line-height: 1.1;
+}
+.logo-names { font-size: 1.45rem; font-weight: 900; letter-spacing: 0.02em; white-space: nowrap; }
+.logo-names .n-ema { color: var(--n-ema); }
+.logo-names .n-taku { color: var(--n-taku); }
+.logo-names .n-oshin { color: var(--n-oshin); }
+.logo-names .n-hiro { color: var(--n-hiro); }
+.logo-sub { font-size: 0.8rem; font-weight: 700; color: var(--muted); letter-spacing: 0.2em; margin-top: 3px; }
+
+.new-button { flex: 0 0 auto; padding: 8px 14px; }
+.new-label-short { display: none; }
+@media (max-width: 440px) {
+  .new-label-long { display: none; }
+  .new-label-short { display: inline; }
+}
 
 /* 下にスクロールしても検索窓は上に残す */
 .search-box {
@@ -361,6 +391,10 @@ button.link.back { text-decoration: none; }
 @keyframes toast-in { from { opacity: 0; transform: translateY(-8px); } }
 
 @media (max-width: 380px) {
-  .list-head .button { padding: 8px 12px; font-size: 0.9rem; }
+  .logo { gap: 8px; }
+  .logo-names { font-size: clamp(1rem, 6vw, 1.3rem); letter-spacing: 0; }
+  .app-icon { width: 38px; height: 38px; }
+  .new-button { min-width: 44px; padding: 8px 12px; font-size: 1.2rem; }
+  .new-label-short { display: none; }
   .segmented button { padding: 4px 9px; font-size: 0.85rem; }
 }

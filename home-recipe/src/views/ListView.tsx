@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Highlight, RatingBadge } from '../components';
+import { Highlight, Logo, RatingBadge } from '../components';
 import { latestRating } from '../model';
 import { paths } from '../router';
 import { sampleRecipes } from '../samples';
@@ -37,9 +37,10 @@ export function ListView({ state, onChange }: { state: ListState; onChange: (s: 
   return (
     <main>
       <header className="list-head">
-        <h1>わが家のレシピ</h1>
-        <a className="button" href={paths.new}>
-          ＋ 新しいレシピ
+        <Logo />
+        <a className="button new-button" href={paths.new} aria-label="新しいレシピ">
+          ＋<span className="new-label-long"> 新しいレシピ</span>
+          <span className="new-label-short"> 登録</span>
         </a>
       </header>
 
