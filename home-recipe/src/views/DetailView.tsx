@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { displayAmount } from '../amount';
 import { ConfirmDialog, Modal, RatingBadge } from '../components';
-import { KIND_LABEL, RATING_OPTIONS, sortedRatings, today, type ItemKind, type Rating, type RatingValue, type Recipe } from '../model';
+import { ALL_RATING_OPTIONS, KIND_LABEL, RATING_OPTIONS, sortedRatings, today, type ItemKind, type Rating, type RatingValue, type Recipe } from '../model';
 import { go, paths } from '../router';
 import { useStore } from '../store';
 
@@ -201,7 +201,7 @@ export function DetailView({ recipe }: { recipe: Recipe }) {
 }
 
 function RatingSummary({ recipe }: { recipe: Recipe }) {
-  const counts = RATING_OPTIONS.map((o) => ({ ...o, count: recipe.ratings.filter((r) => r.value === o.value).length })).filter(
+  const counts = ALL_RATING_OPTIONS.map((o) => ({ ...o, count: recipe.ratings.filter((r) => r.value === o.value).length })).filter(
     (o) => o.count > 0,
   );
   return (

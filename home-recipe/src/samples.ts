@@ -37,7 +37,7 @@ export function sampleRecipes(): Recipe[] {
         '水・顆粒だし・調味料を入れ、落としぶたをして弱めの中火で15分煮る。',
         'じゃがいもに竹串がすっと通ったら火を止め、そのまま少し置いて味をなじませる。',
       ],
-      ratings: [{ id: newId(), date: today(), value: 'all', comment: '子どもがおかわりした' }],
+      ratings: [{ id: newId(), date: today(), value: 'all', comment: 'おかわりが出た' }],
       createdAt: now,
       updatedAt: now,
     },

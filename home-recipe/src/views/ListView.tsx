@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Highlight, RatingBadge } from '../components';
 import { latestRating } from '../model';
 import { paths } from '../router';
@@ -23,6 +23,17 @@ export function ListView({ state, onChange }: { state: ListState; onChange: (s: 
   const hits = useMemo(() => sortHits(searchRecipes(recipes, state.query, state.field), state.sort), [recipes, state]);
   const searching = state.query.trim() !== '';
 
+  // 検索窓が画面の上にくっついたら下に影をつける
+  const sentinel = useRef<HTMLDivElement>(null);
+  const [stuck, setStuck] = useState(false);
+  useEffect(() => {
+    const el = sentinel.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(([e]) => setStuck(!e.isIntersecting));
+    io.observe(el);
+    return () => io.disconnect();
+  }, [recipes.length > 0]);
+
   return (
     <main>
       <header className="list-head">
@@ -32,8 +43,9 @@ export function ListView({ state, onChange }: { state: ListState; onChange: (s: 
         </a>
       </header>
 
+      {recipes.length > 0 && <div ref={sentinel} aria-hidden="true" />}
       {recipes.length > 0 && (
-        <div className="search-box" role="search">
+        <div className={`search-box ${stuck ? 'stuck' : ''}`} role="search">
           <div className="search-input">
             <span aria-hidden="true" className="search-icon">
               🔍
@@ -71,10 +83,12 @@ export function ListView({ state, onChange }: { state: ListState; onChange: (s: 
               <option value="rating">評価が高い順</option>
             </select>
           </div>
-          <p className="result-count" aria-live="polite">
-            {searching ? `${hits.length}件見つかりました` : `${recipes.length}件のレシピ`}
-          </p>
         </div>
+      )}
+      {recipes.length > 0 && (
+        <p className="result-count" aria-live="polite">
+          {searching ? `${hits.length}件見つかりました` : `${recipes.length}件のレシピ`}
+        </p>
       )}
 
       {recipes.length === 0 ? (

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { displayAmount, formatNumber, parseAmount } from './amount';
-import { latestRating, type Recipe } from './model';
+import { latestRating, RATING_OPTIONS, ratingOption, type Recipe } from './model';
 import { loadRecipes, saveRecipes, STORAGE_KEY } from './storage';
 import { highlightParts, normalize, searchRecipes, sortHits } from './search';
 import { reducer } from './store';
@@ -106,7 +106,7 @@ describe('searchRecipes（部分一致）', () => {
   });
   it('評価順に並べ替えられる', () => {
     const rated = [
-      recipe('A', [], { ratings: [{ id: '1', date: '2026-01-01', value: 'split', comment: '' }] }),
+      recipe('A', [], { ratings: [{ id: '1', date: '2026-01-01', value: 'ema', comment: '' }] }),
       recipe('B', [], { ratings: [{ id: '2', date: '2026-01-01', value: 'all', comment: '' }] }),
       recipe('C', []),
     ];
@@ -122,18 +122,24 @@ describe('searchRecipes（部分一致）', () => {
 });
 
 describe('評価と削除', () => {
+  it('選べる評価は4つ', () => {
+    expect(RATING_OPTIONS.map((o) => o.label)).toEqual(['みんな食べた', 'えまたく2人とも食べた', 'えまだけ食べた', 'たくだけ食べた']);
+  });
+  it('以前の版で登録した評価も、元の名前で表示できる', () => {
+    expect(ratingOption('split').label).toBe('好みが分かれた');
+  });
   it('最新の評価は日付が新しいもの', () => {
     const r = recipe('x', [], {
       ratings: [
         { id: '1', date: '2026-03-01', value: 'all', comment: '' },
-        { id: '2', date: '2026-02-01', value: 'left', comment: '' },
+        { id: '2', date: '2026-02-01', value: 'taku', comment: '' },
       ],
     });
     expect(latestRating(r)?.id).toBe('1');
   });
   it('reducer で評価の追加・レシピの削除ができる', () => {
     let state = [recipe('a', []), recipe('b', [])];
-    state = reducer(state, { type: 'addRating', id: 'a', rating: { date: '2026-01-02', value: 'most', comment: 'よし' } });
+    state = reducer(state, { type: 'addRating', id: 'a', rating: { date: '2026-01-02', value: 'both', comment: 'よし' } });
     expect(state[0].ratings).toHaveLength(1);
     state = reducer(state, { type: 'delete', id: 'a' });
     expect(state.map((r) => r.name)).toEqual(['b']);

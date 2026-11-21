@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
-import { KIND_LABEL, PRESETS, ratingOption, type ItemKind, type Preset, type RatingValue } from './model';
+import { KIND_LABEL, PRESETS, ratingOption, type ItemKind, type Preset, type Rating } from './model';
 import { highlightParts, normalize } from './search';
 
 export function Modal({
@@ -94,7 +94,7 @@ export function ConfirmDialog({
   );
 }
 
-export function RatingBadge({ value, small }: { value: RatingValue; small?: boolean }) {
+export function RatingBadge({ value, small }: { value: Rating['value']; small?: boolean }) {
   const o = ratingOption(value);
   return (
     <span className={`rating-badge rating-${value} ${small ? 'small' : ''}`}>

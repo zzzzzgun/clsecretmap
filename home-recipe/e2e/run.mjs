@@ -40,6 +40,7 @@ try {
 
   await page.getByLabel('料理名').fill('豚汁');
   await page.getByLabel('説明').fill('具だくさんで体が温まる。');
+  ok((await page.getByLabel('何人分のレシピか').inputValue()) === '4', '新しいレシピは最初から4人分');
   await page.getByLabel('何人分のレシピか').selectOption('2');
 
   // 材料を候補から選ぶ
@@ -117,16 +118,29 @@ try {
   await page.getByRole('button', { name: '＋ 評価を登録' }).click();
   const rd = page.getByRole('dialog', { name: '評価を登録' });
   ok(await rd.getByRole('button', { name: '登録する' }).isDisabled(), '評価を選ぶまで登録できない');
-  await rd.getByRole('radio', { name: /全員おいしく食べた/ }).click();
+  await rd.getByRole('radio', { name: /えまたく2人とも食べた/ }).click();
+  {
+    const labels = await rd.locator('.rating-choice').evaluateAll((els) => els.map((e) => e.lastChild.textContent.trim()));
+    ok(
+      JSON.stringify(labels) === JSON.stringify(['みんな食べた', 'えまたく2人とも食べた', 'えまだけ食べた', 'たくだけ食べた']),
+      `評価の選択肢は4つ ${labels.join('／')}`,
+    );
+  }
+  {
+    const dateBox = await rd.getByLabel('作った日').boundingBox();
+    const memoBox = await rd.getByLabel('ひとことメモ（任意）').boundingBox();
+    ok(Math.abs(dateBox.width - memoBox.width) < 1 && Math.abs(dateBox.x - memoBox.x) < 1, '作った日の枠がメモ欄と同じ幅・位置');
+    ok(dateBox.height >= 40 && dateBox.height <= 50, `作った日の枠の高さ ${dateBox.height}px`);
+  }
   await rd.getByLabel('ひとことメモ（任意）').fill('おかわりが出た');
   await shot('05-rating');
   await rd.getByRole('button', { name: '登録する' }).click();
-  ok(await visible(page.locator('.rating-history').getByText('全員おいしく食べた')), '評価が登録される');
+  ok(await visible(page.locator('.rating-history').getByText('えまたく2人とも食べた')), '評価が登録される');
   ok(await visible(page.getByText('おかわりが出た')), '評価のメモが出る');
 
   // 5. 一覧に戻ってサンプルも入れ、検索
   await page.getByRole('link', { name: '← 一覧へ' }).click();
-  ok(await visible(page.locator('.recipe-card', { hasText: '豚汁' }).getByText('全員おいしく食べた')), '一覧に評価が出る');
+  ok(await visible(page.locator('.recipe-card', { hasText: '豚汁' }).getByText('えまたく2人とも食べた')), '一覧に評価が出る');
   // 空でないのでサンプルボタンはない → localStorage にサンプルを足して再読み込み（再読み込みしても残ることの確認も兼ねる）
   await page.reload();
   ok(await visible(page.locator('.recipe-card', { hasText: '豚汁' })), '再読み込みしても残っている');
@@ -171,6 +185,18 @@ try {
   await search.fill('大根');
   await page.getByRole('radio', { name: 'すべて' }).click();
   await shot('06-search');
+  // 検索窓は下にスクロールしても上に残る
+  // （レシピ2件だとスクロールしないので、画面を低くして確かめる）
+  await page.setViewportSize({ width: 390, height: 420 });
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  {
+    const scrolled = await page.evaluate(() => window.scrollY);
+    const box = await page.getByLabel('レシピを検索').boundingBox();
+    ok(scrolled > 100 && box && box.y >= 0 && box.y < 30, `スクロールしても検索窓が上に固定（scrollY=${scrolled}, y=${box?.y}）`);
+    await page.screenshot({ path: `${OUT}06b-sticky-search.png` });
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(() => window.scrollTo(0, 0));
   await search.fill('');
 
   // 6. 削除（確認メッセージ）
