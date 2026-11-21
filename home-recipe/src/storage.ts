@@ -36,6 +36,25 @@ export function saveRecipes(recipes: Recipe[], storage: Storage | undefined = sa
   }
 }
 
+const LAST_BACKUP_KEY = 'home-recipe:lastBackupAt';
+
+/** 前回バックアップを保存した日時（ISO）。まだなら null */
+export function loadLastBackupAt(storage: Storage | undefined = safeStorage()): string | null {
+  try {
+    return storage?.getItem(LAST_BACKUP_KEY) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveLastBackupAt(iso: string, storage: Storage | undefined = safeStorage()): void {
+  try {
+    storage?.setItem(LAST_BACKUP_KEY, iso);
+  } catch {
+    // 保存できなくてもバックアップ自体はできているので何もしない
+  }
+}
+
 function safeStorage(): Storage | undefined {
   try {
     return typeof localStorage === 'undefined' ? undefined : localStorage;

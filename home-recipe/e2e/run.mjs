@@ -21,6 +21,7 @@ const context = await browser.newContext({
   deviceScaleFactor: 2,
   locale: 'ja-JP',
   timezoneId: 'Asia/Tokyo',
+  acceptDownloads: true,
 });
 const page = await context.newPage();
 const errors = [];
@@ -216,7 +217,55 @@ try {
   ok((await cards()).length === 1, '再読み込みしても削除されたまま');
   await shot('08-list');
 
-  // 7. 空の状態からサンプル
+  // 7. バックアップ
+  ok(await visible(page.getByText('まだバックアップがありません。')), 'バックアップがないと一覧で知らせる');
+  await page.getByRole('link', { name: '💾 バックアップ' }).click();
+  ok(await visible(page.getByRole('heading', { name: 'バックアップ', exact: true })), 'バックアップ画面を開ける');
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: '💾 バックアップを保存' }).click(),
+  ]);
+  const backupPath = `${OUT}${download.suggestedFilename()}`;
+  await download.saveAs(backupPath);
+  ok(/^recipe-backup-\d{4}-\d{2}-\d{2}\.json$/.test(download.suggestedFilename()), `バックアップファイルを保存できる（${download.suggestedFilename()}）`);
+  ok(await visible(page.locator('.backup-status').getByText(/（今日）/)), '前回のバックアップが「今日」になる');
+  await shot('10-backup');
+  await page.getByRole('link', { name: '← 一覧へ' }).click();
+  ok((await page.getByText('まだバックアップがありません。').count()) === 0, '保存したら一覧の知らせが消える');
+
+  // データが消えた想定 → 空の画面からバックアップで戻す（追加）
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.getByRole('link', { name: '機種変更などでバックアップから戻すときはこちら' }).click();
+  await page.getByLabel('バックアップファイル').setInputFiles(backupPath);
+  const restoreDialog = page.getByRole('dialog', { name: 'バックアップから戻す' });
+  ok(await visible(restoreDialog.getByText('新しく追加 1件・更新 0件・変更なし 0件')), '読み込む前に件数を確認できる');
+  await shot('11-restore');
+  await restoreDialog.getByRole('button', { name: '読み込む' }).click();
+  await page.getByRole('link', { name: '← 一覧へ' }).click();
+  ok(JSON.stringify(await cards()) === JSON.stringify(['具だくさん豚汁']), 'バックアップから戻せる');
+  await page.getByRole('link', { name: '具だくさん豚汁' }).click();
+  ok(await visible(page.getByText('おかわりが出た')), '戻したレシピに評価も入っている');
+  ok((await amount('みそ')) === '大さじ1と1/2', '戻したレシピの量も同じ');
+  await page.getByRole('link', { name: '← 一覧へ' }).click();
+
+  // 置き換え（確認あり）
+  await page.getByRole('link', { name: '💾 バックアップ' }).click();
+  await page.getByLabel('バックアップファイル').setInputFiles(backupPath);
+  ok(await visible(restoreDialog.getByText('変更なし 1件')), '同じバックアップをもう一度読むと「変更なし」');
+  await restoreDialog.getByRole('radio', { name: /今のレシピをすべて置き換える/ }).click();
+  await restoreDialog.getByRole('button', { name: '置き換える' }).click();
+  const replaceConfirm = page.getByRole('dialog', { name: 'すべて置き換えますか？' });
+  ok(await visible(replaceConfirm), '置き換える前に確認が出る');
+  await replaceConfirm.getByRole('button', { name: 'キャンセル' }).click();
+  await restoreDialog.getByRole('button', { name: 'キャンセル' }).click();
+
+  // ほかのファイルは読み込まない
+  await page.getByLabel('バックアップファイル').setInputFiles({ name: 'x.json', mimeType: 'application/json', buffer: Buffer.from('{"hello":1}') });
+  ok(await visible(page.getByRole('alert').getByText(/このアプリで保存したファイルか確かめてください/)), '違うファイルはエラーで知らせる');
+  await page.getByRole('link', { name: '← 一覧へ' }).click();
+
+  // 8. 空の状態からサンプル
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await page.getByRole('button', { name: 'サンプルを入れて試してみる' }).click();

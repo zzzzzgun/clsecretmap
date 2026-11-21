@@ -1,13 +1,14 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from 'react';
 import { newId, type Rating, type Recipe } from './model';
-import { loadRecipes, saveRecipes } from './storage';
+import { loadLastBackupAt, loadRecipes, saveLastBackupAt, saveRecipes } from './storage';
 
 type Action =
   | { type: 'save'; recipe: Recipe }
   | { type: 'delete'; id: string }
   | { type: 'addRating'; id: string; rating: Omit<Rating, 'id'> }
   | { type: 'deleteRating'; id: string; ratingId: string }
-  | { type: 'addMany'; recipes: Recipe[] };
+  | { type: 'addMany'; recipes: Recipe[] }
+  | { type: 'replaceAll'; recipes: Recipe[] };
 
 export function reducer(recipes: Recipe[], action: Action): Recipe[] {
   switch (action.type) {
@@ -23,6 +24,8 @@ export function reducer(recipes: Recipe[], action: Action): Recipe[] {
       return recipes.map((r) => (r.id === action.id ? { ...r, ratings: r.ratings.filter((x) => x.id !== action.ratingId) } : r));
     case 'addMany':
       return [...recipes, ...action.recipes];
+    case 'replaceAll':
+      return action.recipes;
   }
 }
 
@@ -32,6 +35,9 @@ interface Store {
   /** 読み込み・保存に失敗したときの注意書き */
   storageWarning: string | null;
   toast: (message: string) => void;
+  /** 前回バックアップを保存した日時 */
+  lastBackupAt: string | null;
+  markBackedUp: () => void;
 }
 
 const StoreContext = createContext<Store | null>(null);
@@ -59,7 +65,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 2400);
   }, []);
 
-  const value = useMemo(() => ({ recipes, dispatch, storageWarning, toast }), [recipes, storageWarning, toast]);
+  const [lastBackupAt, setLastBackupAt] = useState(() => loadLastBackupAt());
+  const markBackedUp = useCallback(() => {
+    const now = new Date().toISOString();
+    saveLastBackupAt(now);
+    setLastBackupAt(now);
+  }, []);
+
+  const value = useMemo(
+    () => ({ recipes, dispatch, storageWarning, toast, lastBackupAt, markBackedUp }),
+    [recipes, storageWarning, toast, lastBackupAt, markBackedUp],
+  );
   return (
     <StoreContext.Provider value={value}>
       {children}

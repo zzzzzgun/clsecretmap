@@ -3,12 +3,14 @@ import { useEffect, useState } from 'react';
 export type Route =
   | { name: 'list' }
   | { name: 'new' }
+  | { name: 'backup' }
   | { name: 'detail'; id: string }
   | { name: 'edit'; id: string };
 
 export function parseHash(hash: string): Route {
   const path = hash.replace(/^#/, '') || '/';
   if (path === '/new') return { name: 'new' };
+  if (path === '/backup') return { name: 'backup' };
   let m = path.match(/^\/recipe\/([^/]+)\/edit$/);
   if (m) return { name: 'edit', id: decodeURIComponent(m[1]) };
   m = path.match(/^\/recipe\/([^/]+)$/);
@@ -19,6 +21,7 @@ export function parseHash(hash: string): Route {
 export const paths = {
   list: '#/',
   new: '#/new',
+  backup: '#/backup',
   detail: (id: string) => `#/recipe/${encodeURIComponent(id)}`,
   edit: (id: string) => `#/recipe/${encodeURIComponent(id)}/edit`,
 };
