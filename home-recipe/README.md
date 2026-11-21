@@ -40,6 +40,9 @@ npm run build
 npm run build && npm run preview   # 別のターミナルで
 npm run e2e                        # スクリーンショットは e2e/output/ に出る
 
+# public/icon.svg を変えたら、ホーム画面用の PNG を作り直す
+npm run icons
+
 # GitHub Pages 用の公開ファイル（../recipe-note）を作り直す
 npm run publish
 ```
