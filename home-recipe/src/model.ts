@@ -14,13 +14,16 @@ export interface RecipeItem {
   unit: string;
 }
 
-export type RatingValue = 'all' | 'most' | 'split' | 'left';
+/** 今選べる評価 */
+export type RatingValue = 'all' | 'both' | 'ema' | 'taku';
+/** 以前の版で登録された評価（表示だけ。新しくは選べない） */
+export type LegacyRatingValue = 'most' | 'split' | 'left';
 
 export interface Rating {
   id: string;
   /** YYYY-MM-DD */
   date: string;
-  value: RatingValue;
+  value: RatingValue | LegacyRatingValue;
   comment: string;
 }
 
@@ -195,15 +198,32 @@ export const PRESETS: Record<ItemKind, { label: string; items: Preset[] }[]> = {
 
 // ---- 評価 ----
 
-export const RATING_OPTIONS: { value: RatingValue; emoji: string; label: string; score: number }[] = [
-  { value: 'all', emoji: '😋', label: '全員おいしく食べた', score: 4 },
+export interface RatingOption<V extends string = RatingValue | LegacyRatingValue> {
+  value: V;
+  emoji: string;
+  label: string;
+  /** 「評価が高い順」の並べ替えに使う点数 */
+  score: number;
+}
+
+export const RATING_OPTIONS: RatingOption<RatingValue>[] = [
+  { value: 'all', emoji: '😋', label: 'みんな食べた', score: 4 },
+  { value: 'both', emoji: '🙌', label: 'えまたく2人とも食べた', score: 3 },
+  { value: 'ema', emoji: '🙋', label: 'えまだけ食べた', score: 2 },
+  { value: 'taku', emoji: '🙋', label: 'たくだけ食べた', score: 2 },
+];
+
+const LEGACY_RATING_OPTIONS: RatingOption<LegacyRatingValue>[] = [
   { value: 'most', emoji: '🙂', label: 'だいたい好評だった', score: 3 },
   { value: 'split', emoji: '😐', label: '好みが分かれた', score: 2 },
   { value: 'left', emoji: '😣', label: '残す人が多かった', score: 1 },
 ];
 
-export function ratingOption(value: RatingValue) {
-  return RATING_OPTIONS.find((o) => o.value === value) ?? RATING_OPTIONS[0];
+/** 表示用：以前の版の評価も含めたすべて */
+export const ALL_RATING_OPTIONS: RatingOption[] = [...RATING_OPTIONS, ...LEGACY_RATING_OPTIONS];
+
+export function ratingOption(value: Rating['value']): RatingOption {
+  return ALL_RATING_OPTIONS.find((o) => o.value === value) ?? { value, emoji: '・', label: '評価', score: 0 };
 }
 
 /** 最新の評価（日付が新しいもの、同じ日なら後から登録したもの） */

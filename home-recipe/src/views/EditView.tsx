@@ -32,7 +32,7 @@ interface Draft {
 }
 
 function toDraft(recipe?: Recipe): Draft {
-  if (!recipe) return { name: '', description: '', servings: 2, items: [], steps: [''] };
+  if (!recipe) return { name: '', description: '', servings: 4, items: [], steps: [''] };
   return {
     name: recipe.name,
     description: recipe.description,
