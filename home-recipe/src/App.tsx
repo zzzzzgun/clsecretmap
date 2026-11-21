@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { paths, useRoute } from './router';
 import { useStore } from './store';
+import { BackupView } from './views/BackupView';
 import { DetailView } from './views/DetailView';
 import { EditView } from './views/EditView';
 import { ListView, type ListState } from './views/ListView';
@@ -28,6 +29,7 @@ export function App() {
   let view;
   if (route.name === 'list') view = <ListView state={listState} onChange={setListState} />;
   else if (route.name === 'new') view = <EditView key="new" />;
+  else if (route.name === 'backup') view = <BackupView />;
   else {
     const recipe = recipes.find((r) => r.id === route.id);
     if (!recipe) view = <NotFound />;

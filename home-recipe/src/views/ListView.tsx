@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { BACKUP_REMINDER_DAYS, daysSince } from '../backup';
 import { Highlight, Logo, RatingBadge } from '../components';
 import { latestRating } from '../model';
 import { paths } from '../router';
@@ -19,7 +20,9 @@ const FIELDS: { value: SearchField; label: string }[] = [
 ];
 
 export function ListView({ state, onChange }: { state: ListState; onChange: (s: ListState) => void }) {
-  const { recipes, dispatch, toast } = useStore();
+  const { recipes, dispatch, toast, lastBackupAt } = useStore();
+  const backupDays = daysSince(lastBackupAt, new Date());
+  const needsBackup = recipes.length > 0 && (backupDays === null || backupDays >= BACKUP_REMINDER_DAYS);
   const hits = useMemo(() => sortHits(searchRecipes(recipes, state.query, state.field), state.sort), [recipes, state]);
   const searching = state.query.trim() !== '';
 
@@ -115,6 +118,9 @@ export function ListView({ state, onChange }: { state: ListState; onChange: (s: 
           >
             サンプルを入れて試してみる
           </button>
+          <a className="restore-link" href={paths.backup}>
+            機種変更などでバックアップから戻すときはこちら
+          </a>
         </div>
       ) : hits.length === 0 ? (
         <div className="empty card">
@@ -162,6 +168,20 @@ export function ListView({ state, onChange }: { state: ListState; onChange: (s: 
             );
           })}
         </ul>
+      )}
+
+      {recipes.length > 0 && (
+        <footer className="list-foot">
+          {needsBackup && (
+            <p className="notice warn backup-reminder">
+              {backupDays === null ? 'まだバックアップがありません。' : `前回のバックアップから${backupDays}日たっています。`}
+              端末のデータが消えたときに備えて、保存しておきましょう。
+            </p>
+          )}
+          <a className="button secondary" href={paths.backup}>
+            💾 バックアップ
+          </a>
+        </footer>
       )}
     </main>
   );

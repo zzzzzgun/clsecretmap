@@ -322,6 +322,28 @@ button.link.back { text-decoration: none; }
 
 .danger-zone { margin-top: 24px; text-align: center; }
 
+/* ---- backup ---- */
+.list-foot { margin-top: 24px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.list-foot .notice { margin: 0; width: 100%; font-size: 0.9rem; }
+.restore-link { font-size: 0.85rem; color: var(--muted); }
+.warn-text { color: #a85a00; }
+@media (prefers-color-scheme: dark) { .warn-text { color: #ffb560; } }
+.backup-status { margin-bottom: 12px; }
+.backup-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.backup-howto { padding-left: 1.2em; margin: 12px 0 0; }
+.backup-howto li { margin-bottom: 4px; }
+.backup-file-info { background: var(--bg); border-radius: 10px; padding: 10px 12px; }
+.restore-modes { display: grid; gap: 8px; margin-top: 12px; }
+.restore-mode {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left;
+  white-space: normal; font-weight: 400; line-height: 1.5;
+  background: var(--surface); color: var(--text); border: 2px solid var(--border); padding: 10px 12px;
+}
+.restore-mode strong { font-size: 0.95rem; }
+.restore-mode span { font-size: 0.85rem; color: var(--muted); }
+.restore-mode.on { border-color: var(--accent); background: var(--accent-soft); }
+.restore-mode.danger.on { border-color: var(--danger); background: var(--danger-soft); }
+
 /* ---- edit ---- */
 .edit-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .edit-items li { border: 1px solid var(--border); border-radius: 12px; padding: 8px; background: var(--bg); }

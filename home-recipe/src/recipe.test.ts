@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { displayAmount, formatNumber, parseAmount } from './amount';
 import { latestRating, RATING_OPTIONS, ratingOption, type Recipe } from './model';
+import { backupFileName, buildBackup, daysSince, mergeRecipes, parseBackup } from './backup';
 import { loadRecipes, saveRecipes, STORAGE_KEY } from './storage';
 import { highlightParts, normalize, searchRecipes, sortHits } from './search';
 import { reducer } from './store';
@@ -167,5 +168,50 @@ describe('storage', () => {
     const result = loadRecipes(s as unknown as Storage);
     expect(result).toEqual({ ok: false, recipes: [] });
     expect([...s.data.keys()].some((k) => k.startsWith(`${STORAGE_KEY}:broken:`))).toBe(true);
+  });
+});
+
+describe('backup', () => {
+  const now = new Date('2026-11-21T03:00:00Z');
+  const a = recipe('a', ['卵'], {
+    updatedAt: '2026-01-01T00:00:00Z',
+    ratings: [{ id: 'r1', date: '2026-01-01', value: 'all', comment: '' }],
+  });
+
+  it('保存したものをそのまま読み戻せる', () => {
+    const text = JSON.stringify(buildBackup([a], now));
+    const b = parseBackup(text);
+    expect(b.recipes).toEqual([a]);
+    expect(b.exportedAt).toBe(now.toISOString());
+    expect(backupFileName(now)).toBe('recipe-backup-2026-11-21.json');
+  });
+
+  it('ほかのファイルや壊れたファイルは読み込まない', () => {
+    expect(() => parseBackup('not json')).toThrow('ファイルを読み取れません');
+    expect(() => parseBackup(JSON.stringify({ app: 'houday-family', version: 1 }))).toThrow('形式');
+    const broken = buildBackup([a], now) as unknown as { recipes: Record<string, unknown>[] };
+    broken.recipes[0] = { ...broken.recipes[0], items: [{ id: 'x', kind: 'meat', name: '卵', unit: '個', amount: 1 }] };
+    expect(() => parseBackup(JSON.stringify(broken))).toThrow('材料・調味料');
+  });
+
+  it('追加：新しいものは足し、同じレシピは新しい編集を残して評価を合わせる', () => {
+    const edited = { ...a, name: 'a（改）', updatedAt: '2026-02-01T00:00:00Z', ratings: [{ id: 'r2', date: '2026-02-01', value: 'ema' as const, comment: '' }] };
+    const b = recipe('b', []);
+    const r = mergeRecipes([a], [edited, b]);
+    expect(r).toMatchObject({ added: 1, updated: 1, unchanged: 0 });
+    expect(r.recipes.map((x) => x.name)).toEqual(['a（改）', 'b']);
+    expect(r.recipes[0].ratings.map((x) => x.id)).toEqual(['r1', 'r2']);
+  });
+
+  it('追加：古いバックアップでは今の編集を上書きしない', () => {
+    const old = { ...a, name: '古い名前', updatedAt: '2025-12-01T00:00:00Z' };
+    const r = mergeRecipes([a], [old]);
+    expect(r).toMatchObject({ added: 0, updated: 0, unchanged: 1 });
+    expect(r.recipes[0].name).toBe('a');
+  });
+
+  it('前回のバックアップからの日数', () => {
+    expect(daysSince(null, now)).toBeNull();
+    expect(daysSince('2026-10-21T03:00:00Z', now)).toBe(31);
   });
 });
